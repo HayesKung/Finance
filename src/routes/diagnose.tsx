@@ -44,13 +44,29 @@ function DiagnosePage() {
 
   return (
     <Frame>
-      <Kicker n="04">免费诊断工作台</Kicker>
-      <Note>照着问。免费只输出风险清单。完整做法留在付费方案。不要在记录里写私人电话。</Note>
-      <div className="mt-4 max-w-md">
+      <section className="grid items-center gap-6 md:grid-cols-12">
+        <div className="md:col-span-7">
+          <Kicker n="04">免费诊断</Kicker>
+          <p className="max-w-xl text-lg leading-relaxed">三十分钟，只出一张风险清单。完整做法留在付费方案里。</p>
+          <div className="mt-4">
+            <Note>不要在记录里写私人电话。数据只留在这台浏览器。</Note>
+          </div>
+        </div>
+        <img
+          src="/fin/export.jpg"
+          alt="摊开的出口单据，表示诊断先核对单证和收汇"
+          className="shot border border-rule md:col-span-5"
+        />
+      </section>
+      <div className="mt-6 max-w-md">
         <Field label="客户脱敏简称">
           <input className={inputCls} value={alias} onChange={(e) => setAlias(e.target.value)} placeholder="例如：华东门窗-甲" />
         </Field>
       </div>
+      <p className="mt-4 text-sm text-muted">
+        已问 {questionGroups.reduce((n, g) => n + g.items.filter((item) => answers[item.id]?.checked).length, 0)} /{" "}
+        {questionGroups.reduce((n, g) => n + g.items.length, 0)}
+      </p>
       <div className="mt-8 flex flex-col gap-8">
         {questionGroups.map((g, gi) => (
           <section key={g.title}>
