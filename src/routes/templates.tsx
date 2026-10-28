@@ -1,18 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { Btn, Frame, Kicker, Note, Waiting, areaCls } from "@/components/finpivot/frame";
+import { Btn, Frame, Kicker, Note, areaCls } from "@/components/finpivot/frame";
 import { templateSeeds } from "@/lib/finpivot/copy";
-import { useHydrated, useOs } from "@/lib/finpivot/store";
+import { useOs } from "@/lib/finpivot/store";
 
 export const Route = createFileRoute("/templates")({ component: TemplatesPage });
 
 function TemplatesPage() {
-  const ready = useHydrated();
   const templates = useOs((s) => s.templates);
   const setTemplate = useOs((s) => s.setTemplate);
   const [id, setId] = useState(templateSeeds[0].id);
   const [copied, setCopied] = useState(false);
-  if (!ready) return <Waiting />;
   const meta = templateSeeds.find((t) => t.id === id) ?? templateSeeds[0];
   const body = templates[meta.id] ?? meta.body;
 

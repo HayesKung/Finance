@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { Btn, Field, Frame, Kicker, Note, Waiting, inputCls } from "@/components/finpivot/frame";
+import { Btn, Field, Frame, Kicker, Note, inputCls } from "@/components/finpivot/frame";
 import { SOURCES } from "@/lib/finpivot/copy";
 import { CLIENT_STATUSES, PROJECT_STATUSES } from "@/lib/finpivot/flow";
-import { useHydrated, useOs, type Client, type Project, type Source } from "@/lib/finpivot/store";
+import { useOs, type Client, type Project, type Source } from "@/lib/finpivot/store";
 
 export const Route = createFileRoute("/clients")({ component: ClientsPage });
 
@@ -22,7 +22,6 @@ const blank = {
 };
 
 function ClientsPage() {
-  const ready = useHydrated();
   const clients = useOs((s) => s.clients);
   const projects = useOs((s) => s.projects);
   const orders = useOs((s) => s.orders);
@@ -35,7 +34,6 @@ function ClientsPage() {
   const [form, setForm] = useState(blank);
   const [projectName, setProjectName] = useState<Record<string, string>>({});
   const [warn, setWarn] = useState("");
-  if (!ready) return <Waiting />;
 
   return (
     <Frame>

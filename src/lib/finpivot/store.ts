@@ -1,6 +1,5 @@
-import { useEffect, useState } from "react";
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { createJSONStorage, persist } from "zustand/middleware";
 import {
   IMPACTS,
   OUTREACH_RESULTS,
@@ -203,6 +202,31 @@ const uid = () =>
     ? crypto.randomUUID()
     : `id-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
+const safeStorage = {
+  getItem: (name: string) => {
+    try {
+      if (typeof localStorage === "undefined") return null;
+      return localStorage.getItem(name);
+    } catch {
+      return null;
+    }
+  },
+  setItem: (name: string, value: string) => {
+    try {
+      localStorage.setItem(name, value);
+    } catch {
+      /* 无存储权限时，这一次打开仍然可用 */
+    }
+  },
+  removeItem: (name: string) => {
+    try {
+      localStorage.removeItem(name);
+    } catch {
+      /* ignore */
+    }
+  },
+};
+
 export const useOs = create<OsState>()(
   persist(
     (set) => ({
@@ -400,16 +424,11 @@ export const useOs = create<OsState>()(
           deliverables: s.deliverables.map((d) => (d.id === id ? { ...d, done: !d.done } : d)),
         })),
     }),
-    { name: "finpivot-os-v1" },
+    { name: "finpivot-os-v1", storage: createJSONStorage(() => safeStorage), skipHydration: true },
   ),
 );
 
-export function useHydrated() {
-  const [ready, setReady] = useState(false);
-  useEffect(() => {
-    const persistApi = useOs.persist;
-    if (persistApi.hasHydrated()) setReady(true);
-    return persistApi.onFinishHydration(() => setReady(true));
-  }, []);
-  return ready;
+export function hydrateDesk() {
+  if (useOs.persist.hasHydrated()) return;
+  void Promise.resolve(useOs.persist.rehydrate()).catch(() => undefined);
 }

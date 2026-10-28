@@ -1,13 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Btn, Field, Frame, Kicker, Note, Waiting, areaCls, inputCls } from "@/components/finpivot/frame";
+import { Btn, Field, Frame, Kicker, Note, areaCls, inputCls } from "@/components/finpivot/frame";
 import { IMPACTS, closeScript, questionGroups } from "@/lib/finpivot/copy";
-import { useHydrated, useOs } from "@/lib/finpivot/store";
+import { useOs } from "@/lib/finpivot/store";
 
 export const Route = createFileRoute("/diagnose")({ component: DiagnosePage });
 
 function DiagnosePage() {
-  const ready = useHydrated();
   const [copied, setCopied] = useState(false);
   const answers = useOs((s) => s.answers);
   const setAnswer = useOs((s) => s.setAnswer);
@@ -42,8 +41,6 @@ function DiagnosePage() {
     lines.push(``, closeScript);
     return lines.join("\n");
   }, [alias, answers, risks]);
-
-  if (!ready) return <Waiting />;
 
   return (
     <Frame>

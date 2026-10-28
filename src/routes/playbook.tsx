@@ -1,17 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { Btn, Frame, Kicker, Note, Waiting } from "@/components/finpivot/frame";
+import { Btn, Frame, Kicker, Note } from "@/components/finpivot/frame";
 import { articles, channels, partnerLine, scripts, seoDirections, topics, weeks } from "@/lib/finpivot/copy";
-import { useHydrated, useOs } from "@/lib/finpivot/store";
+import { useOs } from "@/lib/finpivot/store";
 
 export const Route = createFileRoute("/playbook")({ component: PlaybookPage });
 
 function PlaybookPage() {
-  const ready = useHydrated();
   const checked = useOs((s) => s.articleChecked);
   const toggle = useOs((s) => s.toggleArticle);
   const [copied, setCopied] = useState("");
-  if (!ready) return <Waiting />;
 
   const copy = (id: string, text: string) => {
     void navigator.clipboard.writeText(text).then(() => {

@@ -1,6 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { META } from "@/lib/finpivot/copy";
+import { hydrateDesk } from "@/lib/finpivot/store";
 
 const links = [
   { to: "/", label: "官网草案" },
@@ -15,6 +16,9 @@ const links = [
 
 export function Frame({ children }: { children: ReactNode }) {
   const path = useRouterState({ select: (s) => s.location.pathname });
+  useEffect(() => {
+    hydrateDesk();
+  }, []);
   return (
     <div className="min-h-screen bg-paper text-ink">
       <div className="bg-seal text-seal-ink">
@@ -121,13 +125,5 @@ export function Btn({
     >
       {children}
     </button>
-  );
-}
-
-export function Waiting() {
-  return (
-    <Frame>
-      <p className="text-muted">正在打开这台设备上的工作底稿…</p>
-    </Frame>
   );
 }

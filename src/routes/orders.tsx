@@ -1,14 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { Btn, Field, Frame, Kicker, Note, Waiting, inputCls } from "@/components/finpivot/frame";
+import { Btn, Field, Frame, Kicker, Note, inputCls } from "@/components/finpivot/frame";
 import { PRODUCTS } from "@/lib/finpivot/copy";
 import { BILLINGS, E2E_STEPS, ORDER_STATUSES, nextStatuses } from "@/lib/finpivot/flow";
-import { useHydrated, useOs, type Order, type Product } from "@/lib/finpivot/store";
+import { useOs, type Order, type Product } from "@/lib/finpivot/store";
 
 export const Route = createFileRoute("/orders")({ component: OrdersPage });
 
 function OrdersPage() {
-  const ready = useHydrated();
   const clients = useOs((s) => s.clients);
   const projects = useOs((s) => s.projects);
   const orders = useOs((s) => s.orders);
@@ -26,7 +25,6 @@ function OrdersPage() {
   const [title, setTitle] = useState("");
   const [amount, setAmount] = useState("");
   const [draftPay, setDraftPay] = useState<Record<string, string>>({});
-  if (!ready) return <Waiting />;
 
   const clientProjects = projects.filter((p) => p.clientId === clientId);
   const open = orders.filter((o) => o.status !== "已取消" && o.status !== "已交付");

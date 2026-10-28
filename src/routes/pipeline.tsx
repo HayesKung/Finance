@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Btn, Field, Frame, Kicker, Note, Waiting, inputCls } from "@/components/finpivot/frame";
+import { Btn, Field, Frame, Kicker, Note, inputCls } from "@/components/finpivot/frame";
 import { PRODUCTS, SOURCES, STAGES } from "@/lib/finpivot/copy";
-import { useHydrated, useOs, type Lead, type Outreach, type Source, type Stage } from "@/lib/finpivot/store";
+import { useOs, type Lead, type Outreach, type Source, type Stage } from "@/lib/finpivot/store";
 
 export const Route = createFileRoute("/pipeline")({ component: PipelinePage });
 
@@ -24,7 +24,6 @@ const empty = {
 };
 
 function PipelinePage() {
-  const ready = useHydrated();
   const leads = useOs((s) => s.leads);
   const addLead = useOs((s) => s.addLead);
   const updateLead = useOs((s) => s.updateLead);
@@ -57,8 +56,6 @@ function PipelinePage() {
       }),
     [leads, q, stage],
   );
-
-  if (!ready) return <Waiting />;
 
   const onPublic = (v: string) => {
     setForm({ ...form, publicChannel: v });

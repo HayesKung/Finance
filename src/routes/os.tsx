@@ -1,13 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Btn, Field, Frame, Kicker, Note, Waiting, inputCls, areaCls } from "@/components/finpivot/frame";
+import { Btn, Field, Frame, Kicker, Note, inputCls, areaCls } from "@/components/finpivot/frame";
 import { META, STAGES, firstWeek, funnelMetrics, gates, rhythm } from "@/lib/finpivot/copy";
-import { useHydrated, useOs } from "@/lib/finpivot/store";
+import { useOs } from "@/lib/finpivot/store";
 
 export const Route = createFileRoute("/os")({ component: OsPage });
 
 function OsPage() {
-  const ready = useHydrated();
-  if (!ready) return <Waiting />;
   return (
     <Frame>
       <Kicker n="00">作战台</Kicker>
