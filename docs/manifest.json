@@ -26,5 +26,13 @@
   "brand_invented": false,
   "contact_filled": false,
   "database": "none; browser-local operating desk",
-  "pending_confirmation": ["品牌名", "域名方式", "联系方式与预约方式", "对外发布"]
+  "pending_confirmation": [
+    "品牌名",
+    "域名方式",
+    "联系方式与预约方式",
+    "对外发布"
+  ],
+  "github_commit": "5e43c811e4baaf824dd6e998a17f89465ec011fa",
+  "drive_folder_id": "1G9EO-FTpSJhBP5Z0QwDNhv2bIlmgxVB_",
+  "drive_folder_url": "https://drive.google.com/drive/folders/1G9EO-FTpSJhBP5Z0QwDNhv2bIlmgxVB_"
 }
