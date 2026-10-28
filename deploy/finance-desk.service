@@ -1,0 +1,43 @@
+# Finance · MM-FINPIVOT 内部作战台 systemd 单元
+#
+# 前置：已在 /opt/finance-finpivot 完成 `npm install && npm run build`。
+# 说明：必须走 listen.mjs，它固定回环地址并用 /proc/net/tcp 复核监听范围。
+#       直接用 .output/server/index.mjs 会绕过这层核对，见 docs/03-本地构建.md。
+#
+# 鉴权状态：AuthProvider 是透传，不是访问控制。本单元只绑 127.0.0.1，
+#           不暴露公网。真实鉴权落地之前不要改 PORT_HOST，也不要加 nginx vhost。
+#
+# 安装：
+#   useradd -r -s /usr/sbin/nologin -d /opt/finance-finpivot finance
+#   cp deploy/finance-desk.service /etc/systemd/system/
+#   systemctl daemon-reload && systemctl enable --now finance-desk
+
+[Unit]
+Description=Finance MM-FINPIVOT desk (TanStack Start SSR, loopback only)
+After=network.target
+
+[Service]
+Type=simple
+User=finance
+Group=finance
+WorkingDirectory=/opt/finance-finpivot
+Environment=NODE_ENV=production
+Environment=PORT=4173
+ExecStart=/usr/bin/node /opt/finance-finpivot/listen.mjs
+Restart=always
+RestartSec=5
+
+# 收紧运行边界
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+CapabilityBoundingSet=
+MemoryMax=768M
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=finance-desk
+
+[Install]
+WantedBy=multi-user.target
