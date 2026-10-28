@@ -1,0 +1,29 @@
+[Unit]
+Description=Finance MM-FINPIVOT desk (TanStack Start SSR)
+After=network.target
+
+[Service]
+Type=simple
+User=finance
+Group=finance
+WorkingDirectory=/opt/finance-finpivot
+Environment=NODE_ENV=production
+Environment=PORT=3000
+Environment=HOSTNAME=127.0.0.1
+ExecStart=/usr/bin/node /opt/finance-finpivot/server.mjs
+Restart=always
+RestartSec=5
+
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+CapabilityBoundingSet=
+MemoryMax=768M
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=finance-desk
+
+[Install]
+WantedBy=multi-user.target
