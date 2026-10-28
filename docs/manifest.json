@@ -1,0 +1,30 @@
+{
+  "project": "MM-FINPIVOT",
+  "status": "SYSTEM_DRAFT_READY_FOR_INTERNAL_USE",
+  "not_status": "NOT_CLEARED_FOR_PUBLIC_LAUNCH",
+  "date": "2026-10-28",
+  "source_pdf": {
+    "name": "MM-FINPIVOT-001_财务人员转型_服务单与获客方案_2026-10-28.pdf",
+    "drive_id": "1W1HoXgeM4CMTGLZvsXnfwjKhf8vb3nDC",
+    "note": "Uploaded file is v1 through section 8. Task cards refer to a v2 with sections 9-13 that were not in this upload. Supplements are labeled 系统补充."
+  },
+  "tasks": {
+    "MM-FINPIVOT-001": {
+      "drive_task": "1zbVrgWmyJkotY4qhxGpoX0kioeBy4hGm",
+      "deadline": "2026-11-04T20:00:00+08:00",
+      "owner": "小ke",
+      "reviewer": "小m"
+    },
+    "MM-FINPIVOT-002": {
+      "drive_task": "1XmoJXNh8D3MaSo2AMsgQ08BoFhYpMe2L",
+      "stage_a_deadline": "2026-11-11T20:00:00+08:00",
+      "stage_b": "pending brand, domain, contact"
+    }
+  },
+  "github": "https://github.com/HayesKung/Finance",
+  "prices_unchanged": true,
+  "brand_invented": false,
+  "contact_filled": false,
+  "database": "none; browser-local operating desk",
+  "pending_confirmation": ["品牌名", "域名方式", "联系方式与预约方式", "对外发布"]
+}
