@@ -11,6 +11,15 @@ import {
   questionGroups,
   templateSeeds,
 } from "@/lib/finpivot/copy";
+import {
+  buildPlan,
+  deliverableNames,
+  gateMove,
+  type Billing,
+  type ClientStatus,
+  type OrderStatus,
+  type ProjectStatus,
+} from "@/lib/finpivot/flow";
 
 export type Stage = (typeof STAGES)[number];
 export type Source = (typeof SOURCES)[number];
@@ -46,6 +55,68 @@ export type Outreach = {
   next: string;
 };
 
+export type Client = {
+  id: string;
+  leadId: string;
+  alias: string;
+  company: string;
+  industry: string;
+  direction: string;
+  market: string;
+  source: Source;
+  publicChannel: string;
+  consentPrivate: boolean;
+  privateContact: string;
+  status: ClientStatus;
+  note: string;
+};
+
+export type Project = {
+  id: string;
+  clientId: string;
+  name: string;
+  market: string;
+  status: ProjectStatus;
+  note: string;
+};
+
+export type Order = {
+  id: string;
+  clientId: string;
+  projectId: string;
+  product: Product;
+  billing: Billing;
+  title: string;
+  amountYuan: number;
+  status: OrderStatus;
+  blockReason: string;
+};
+
+export type Payment = {
+  id: string;
+  orderId: string;
+  kind: "定金" | "预收" | "阶段费" | "尾款";
+  label: string;
+  expectedYuan: number;
+  receivedYuan: number;
+};
+
+export type Deliverable = {
+  id: string;
+  orderId: string;
+  name: string;
+  done: boolean;
+};
+
+export type OrderInput = {
+  clientId: string;
+  projectId: string;
+  product: Product;
+  billing: Billing;
+  title: string;
+  amountYuan: number;
+};
+
 export type Risk = { id: string; point: string; impact: Impact; next: string };
 export type Answer = { checked: boolean; note: string };
 
@@ -74,6 +145,11 @@ type OsState = {
   hostingFee: number;
   exportOrders: number;
   exportFee: number;
+  clients: Client[];
+  projects: Project[];
+  orders: Order[];
+  payments: Payment[];
+  deliverables: Deliverable[];
   addLead: (lead: Omit<Lead, "id">) => void;
   updateLead: (id: string, patch: Partial<Lead>) => void;
   removeLead: (id: string) => void;
@@ -90,6 +166,18 @@ type OsState = {
   toggleArticle: (id: string) => void;
   setReport: (patch: Partial<WeekReport>) => void;
   setModel: (patch: Partial<Pick<OsState, "hostingClients" | "hostingFee" | "exportOrders" | "exportFee">>) => void;
+  addClient: (row: Omit<Client, "id" | "leadId"> & { leadId?: string }) => void;
+  updateClient: (id: string, patch: Partial<Client>) => void;
+  removeClient: (id: string) => void;
+  promoteLead: (leadId: string) => void;
+  addProject: (row: Omit<Project, "id">) => void;
+  updateProject: (id: string, patch: Partial<Project>) => void;
+  removeProject: (id: string) => void;
+  addOrder: (row: OrderInput) => void;
+  issuePlan: (orderId: string) => void;
+  moveOrder: (orderId: string, status: OrderStatus) => void;
+  recordReceipt: (paymentId: string, yuan: number) => void;
+  toggleDeliverable: (id: string) => void;
 };
 
 const emptyAnswers = () => {
@@ -142,6 +230,11 @@ export const useOs = create<OsState>()(
       hostingFee: 15000,
       exportOrders: 10,
       exportFee: 2500,
+      clients: [],
+      projects: [],
+      orders: [],
+      payments: [],
+      deliverables: [],
       addLead: (lead) => set((s) => ({ leads: [{ ...lead, id: uid() }, ...s.leads] })),
       updateLead: (id, patch) =>
         set((s) => ({
@@ -180,6 +273,132 @@ export const useOs = create<OsState>()(
         set((s) => ({ articleChecked: { ...s.articleChecked, [id]: !s.articleChecked[id] } })),
       setReport: (patch) => set((s) => ({ report: { ...s.report, ...patch } })),
       setModel: (patch) => set(patch),
+      addClient: (row) =>
+        set((s) => ({
+          clients: [{ ...row, leadId: row.leadId ?? "", id: uid() }, ...s.clients],
+        })),
+      updateClient: (id, patch) =>
+        set((s) => ({
+          clients: s.clients.map((c) => (c.id === id ? { ...c, ...patch } : c)),
+        })),
+      removeClient: (id) =>
+        set((s) => {
+          if (s.orders.some((o) => o.clientId === id && o.status !== "已取消")) return s;
+          return {
+            clients: s.clients.filter((c) => c.id !== id),
+            projects: s.projects.filter((p) => p.clientId !== id),
+          };
+        }),
+      promoteLead: (leadId) =>
+        set((s) => {
+          if (s.clients.some((c) => c.leadId === leadId)) return s;
+          const lead = s.leads.find((l) => l.id === leadId);
+          if (!lead) return s;
+          const client: Client = {
+            id: uid(),
+            leadId,
+            alias: lead.alias,
+            company: lead.company,
+            industry: lead.industry,
+            direction: lead.direction,
+            market: lead.market,
+            source: lead.source,
+            publicChannel: lead.publicChannel,
+            consentPrivate: lead.consentPrivate,
+            privateContact: lead.privateContact,
+            status: "潜在",
+            note: lead.note,
+          };
+          return { clients: [client, ...s.clients] };
+        }),
+      addProject: (row) => set((s) => ({ projects: [{ ...row, id: uid() }, ...s.projects] })),
+      updateProject: (id, patch) =>
+        set((s) => ({
+          projects: s.projects.map((p) => (p.id === id ? { ...p, ...patch } : p)),
+        })),
+      removeProject: (id) =>
+        set((s) => {
+          if (s.orders.some((o) => o.projectId === id && o.status !== "已取消")) return s;
+          return { projects: s.projects.filter((p) => p.id !== id) };
+        }),
+      addOrder: (row) =>
+        set((s) => {
+          if (!row.clientId || row.product === "未定" || row.amountYuan <= 0) return s;
+          const order: Order = {
+            ...row,
+            id: uid(),
+            amountYuan: Math.round(row.amountYuan),
+            status: "草稿",
+            blockReason: "",
+          };
+          return { orders: [order, ...s.orders] };
+        }),
+      issuePlan: (orderId) =>
+        set((s) => {
+          const order = s.orders.find((o) => o.id === orderId);
+          if (!order || order.status !== "草稿") return s;
+          if (order.amountYuan <= 0) {
+            return {
+              orders: s.orders.map((o) =>
+                o.id === orderId ? { ...o, blockReason: "金额要大于 0。不接受先做后看。" } : o,
+              ),
+            };
+          }
+          const payments = buildPlan(order.billing, order.amountYuan).map((line) => ({
+            ...line,
+            id: uid(),
+            orderId,
+          }));
+          const deliverables = deliverableNames(order.product).map((name) => ({
+            id: uid(),
+            orderId,
+            name,
+            done: false,
+          }));
+          const move = gateMove(order.status, "待收款", order.billing, payments, false);
+          if (!move.ok) {
+            return {
+              orders: s.orders.map((o) => (o.id === orderId ? { ...o, blockReason: move.reason } : o)),
+            };
+          }
+          return {
+            payments: [...payments, ...s.payments.filter((p) => p.orderId !== orderId)],
+            deliverables: [...deliverables, ...s.deliverables.filter((d) => d.orderId !== orderId)],
+            orders: s.orders.map((o) =>
+              o.id === orderId ? { ...o, status: "待收款", blockReason: "" } : o,
+            ),
+          };
+        }),
+      moveOrder: (orderId, status) =>
+        set((s) => {
+          const order = s.orders.find((o) => o.id === orderId);
+          if (!order) return s;
+          const lines = s.payments.filter((p) => p.orderId === orderId);
+          const items = s.deliverables.filter((d) => d.orderId === orderId);
+          const done = items.length > 0 && items.every((d) => d.done);
+          const move = gateMove(order.status, status, order.billing, lines, done);
+          return {
+            orders: s.orders.map((o) =>
+              o.id === orderId
+                ? move.ok
+                  ? { ...o, status, blockReason: "" }
+                  : { ...o, blockReason: move.reason }
+                : o,
+            ),
+          };
+        }),
+      recordReceipt: (paymentId, yuan) =>
+        set((s) => ({
+          payments: s.payments.map((p) => {
+            if (p.id !== paymentId) return p;
+            const receivedYuan = Math.max(0, Math.min(p.expectedYuan, Math.round(yuan)));
+            return { ...p, receivedYuan };
+          }),
+        })),
+      toggleDeliverable: (id) =>
+        set((s) => ({
+          deliverables: s.deliverables.map((d) => (d.id === id ? { ...d, done: !d.done } : d)),
+        })),
     }),
     { name: "finpivot-os-v1" },
   ),

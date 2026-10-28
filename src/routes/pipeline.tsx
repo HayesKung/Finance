@@ -29,6 +29,8 @@ function PipelinePage() {
   const addLead = useOs((s) => s.addLead);
   const updateLead = useOs((s) => s.updateLead);
   const removeLead = useOs((s) => s.removeLead);
+  const promoteLead = useOs((s) => s.promoteLead);
+  const clients = useOs((s) => s.clients);
   const importLeads = useOs((s) => s.importLeads);
   const outreach = useOs((s) => s.outreach);
   const addOutreach = useOs((s) => s.addOutreach);
@@ -241,6 +243,12 @@ function PipelinePage() {
                   ))}
                 </select>
                 <Btn tone="paper" onClick={() => removeLead(l.id)}>移除</Btn>
+                <Btn
+                  tone={clients.some((c) => c.leadId === l.id) ? "seal" : "paper"}
+                  onClick={() => promoteLead(l.id)}
+                >
+                  {clients.some((c) => c.leadId === l.id) ? "已建档" : "升为客户"}
+                </Btn>
               </div>
             </li>
           ))

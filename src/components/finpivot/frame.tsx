@@ -7,6 +7,8 @@ const links = [
   { to: "/os", label: "作战台" },
   { to: "/diagnose", label: "诊断" },
   { to: "/pipeline", label: "名单" },
+  { to: "/clients", label: "客户" },
+  { to: "/orders", label: "订单" },
   { to: "/playbook", label: "获客" },
   { to: "/templates", label: "模板" },
 ] as const;

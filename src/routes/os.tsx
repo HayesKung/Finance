@@ -49,8 +49,8 @@ function Counters() {
         <Link to="/pipeline" className="inline-flex h-11 items-center border border-ink bg-ink px-4 text-sm text-paper">
           去补名单
         </Link>
-        <Link to="/playbook" className="inline-flex h-11 items-center border border-rule px-4 text-sm">
-          看四周获客
+        <Link to="/orders" className="inline-flex h-11 items-center border border-rule px-4 text-sm">
+          订单与收款
         </Link>
       </div>
       <p className="mt-4 text-sm text-muted">每周必看的五个漏斗数：{funnelMetrics.join("、")}。成交数不是这五个里的考核项。</p>
