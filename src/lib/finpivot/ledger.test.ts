@@ -73,7 +73,7 @@ describe("server desk checks", () => {
     const open = { orders: [running], payments: lines.map((line) => ({ ...line, receivedYuan: 2000 })), deliverables: [{ orderId: "o1", done: true, preparer: "海", reviewer: "支撑", reviewedAt: "2026-10-29T00:00:00.000Z" }] };
     const closed = { ...open, orders: [{ ...running, status: "已交付" as const }] };
     assert.equal(diffDesk(open, closed).ok, false);
-    assert.equal(handoffReady(running.handoff).ok, false);
+    assert.equal(handoffReady(undefined).ok, false);
   });
 
   it("stops a reused voucher, a support sign-off, and a price change after money arrived", () => {
@@ -95,5 +95,13 @@ describe("server desk checks", () => {
     assert.match(diffDesk(logged, wiped).reason, /不能删/);
     const short = { ...prev, payments: [lines[0]] };
     assert.match(diffDesk(prev, short).reason, /不一致|不能删/);
+  });
+
+  it("rejects cash above the receivable and a fractional amount", () => {
+    const prev = { orders: [order], payments: lines, deliverables: [] };
+    const over = { ...prev, payments: [{ ...lines[0], receivedYuan: 2001, receiptRef: "HZ09" }, lines[1]] };
+    assert.match(diffDesk(prev, over).reason, /高于/);
+    const fraction = { ...prev, payments: [lines[0], { ...lines[1], receivedYuan: 1.5, receiptRef: "HZ10" }] };
+    assert.match(diffDesk(prev, fraction).reason, /金额/);
   });
 });

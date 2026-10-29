@@ -2,9 +2,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { Btn, Frame, Kicker, Note } from "@/components/finpivot/frame";
 import { useI18n } from "@/lib/finpivot/locale";
+import { requireStaffPage } from "@/lib/finpivot/staff-gate";
 import { useOs } from "@/lib/finpivot/store";
 
-export const Route = createFileRoute("/playbook")({ component: PlaybookPage });
+export const Route = createFileRoute("/playbook")({ beforeLoad: () => requireStaffPage(), component: PlaybookPage });
 
 function PlaybookPage() {
   const { t, show, copy } = useI18n();

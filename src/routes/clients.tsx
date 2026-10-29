@@ -6,9 +6,10 @@ import { CLIENT_STATUSES, PROJECT_STATUSES } from "@/lib/finpivot/flow";
 import { useI18n } from "@/lib/finpivot/locale";
 import { CURRENCIES, convertAtRate, currencyLine, formatMoney } from "@/lib/finpivot/glossary";
 import { cannotDelete } from "@/lib/finpivot/ui";
+import { requireStaffPage } from "@/lib/finpivot/staff-gate";
 import { useOs, type Client, type Project, type Source } from "@/lib/finpivot/store";
 
-export const Route = createFileRoute("/clients")({ component: ClientsPage });
+export const Route = createFileRoute("/clients")({ beforeLoad: () => requireStaffPage(), component: ClientsPage });
 
 const blank = {
   alias: "",

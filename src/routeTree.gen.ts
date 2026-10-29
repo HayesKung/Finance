@@ -19,6 +19,7 @@ import { Route as PipelineRouteImport } from './routes/pipeline'
 import { Route as PlaybookRouteImport } from './routes/playbook'
 import { Route as SignRouteImport } from './routes/sign'
 import { Route as TemplatesRouteImport } from './routes/templates'
+import { Route as StaffLoginRouteImport } from './routes/staff.login'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -70,6 +71,11 @@ const TemplatesRoute = TemplatesRouteImport.update({
   path: '/templates',
   getParentRoute: () => rootRouteImport,
 } as any)
+const StaffLoginRoute = StaffLoginRouteImport.update({
+  id: '/staff/login',
+  path: '/staff/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -82,6 +88,7 @@ export interface FileRoutesByFullPath {
   '/playbook': typeof PlaybookRoute
   '/sign': typeof SignRoute
   '/templates': typeof TemplatesRoute
+  '/staff/login': typeof StaffLoginRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -94,6 +101,7 @@ export interface FileRoutesByTo {
   '/playbook': typeof PlaybookRoute
   '/sign': typeof SignRoute
   '/templates': typeof TemplatesRoute
+  '/staff/login': typeof StaffLoginRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -107,6 +115,7 @@ export interface FileRoutesById {
   '/playbook': typeof PlaybookRoute
   '/sign': typeof SignRoute
   '/templates': typeof TemplatesRoute
+  '/staff/login': typeof StaffLoginRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -121,6 +130,7 @@ export interface FileRouteTypes {
     | '/playbook'
     | '/sign'
     | '/templates'
+    | '/staff/login'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -133,6 +143,7 @@ export interface FileRouteTypes {
     | '/playbook'
     | '/sign'
     | '/templates'
+    | '/staff/login'
   id:
     | '__root__'
     | '/'
@@ -145,6 +156,7 @@ export interface FileRouteTypes {
     | '/playbook'
     | '/sign'
     | '/templates'
+    | '/staff/login'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -158,6 +170,7 @@ export interface RootRouteChildren {
   PlaybookRoute: typeof PlaybookRoute
   SignRoute: typeof SignRoute
   TemplatesRoute: typeof TemplatesRoute
+  StaffLoginRoute: typeof StaffLoginRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -232,6 +245,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TemplatesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/staff/login': {
+      id: '/staff/login'
+      path: '/staff/login'
+      fullPath: '/staff/login'
+      preLoaderRoute: typeof StaffLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -246,6 +266,7 @@ const rootRouteChildren: RootRouteChildren = {
   PlaybookRoute: PlaybookRoute,
   SignRoute: SignRoute,
   TemplatesRoute: TemplatesRoute,
+  StaffLoginRoute: StaffLoginRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

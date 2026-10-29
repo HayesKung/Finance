@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { customerView, mergeStaffSave, tokenOk, type ContractPayload } from "./contract-share.ts";
+import { contractDigest, customerView, mergeStaffSave, tokenOk, type ContractPayload } from "./contract-share.ts";
 
 const base = {
   ref: "AGR-1",
@@ -43,11 +43,14 @@ describe("contract link", () => {
     assert.equal(open.wechatId, "wx");
   });
 
-  it("does not let a staff save wipe a signature made on another device", () => {
-    const existing = { ...base, signedName: "吴某", signedAt: "t", signedImage: "data:image/png;base64,abc" };
-    const incoming = { ...base, firmName: "新名称" };
+  it("does not let a staff save wipe a signature or the signed terms", async () => {
+    const existing = { ...base, signedName: "吴某", signedAt: "t", signedImage: "data:image/png;base64,abc", signedContentHash: await contractDigest(base) };
+    const incoming = { ...base, firmName: "新名称", amountYuan: 1, firmSigner: "周某", firmSignedAt: "t2", firmSignImage: "data:image/png;base64,firm" };
     const merged = mergeStaffSave(existing, incoming);
     assert.equal(merged.signedName, "吴某");
-    assert.equal(merged.firmName, "新名称");
+    assert.equal(merged.firmName, "乙");
+    assert.equal(merged.amountYuan, 1000);
+    assert.equal(merged.firmSigner, "周某");
+    assert.equal(merged.signedContentHash, await contractDigest(merged));
   });
 });

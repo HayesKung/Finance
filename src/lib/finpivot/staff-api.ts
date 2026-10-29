@@ -17,22 +17,26 @@ export const loginStaff = createServerFn({ method: "POST" })
     const session = await import("@/lib/finpivot/session.server");
     const guard = await import("@/lib/finpivot/guard-db");
     const access = await import("@/lib/finpivot/access");
+    session.assertSameOrigin();
     if (!session.loginConfigured()) throw new Error("登录未配置");
     const bucket = `login:${session.clientIp()}`;
-    if (!(await guard.rateOpen(bucket, access.LOGIN_LIMIT))) throw new Error("稍后再试");
+    const attempt = await guard.consumeFailure(bucket, access.LOGIN_LIMIT);
+    if (attempt.blocked) throw new Error("稍后再试");
     const role = session.roleForPassword(data.password);
     if (!role) {
-      await guard.hitRate(bucket, access.LOGIN_LIMIT);
       await guard.audit("anonymous", "login", bucket, false);
       throw new Error("密码不正确");
     }
+    const { getSql } = await import("@/lib/db");
+    const sql = await getSql();
+    await guard.writeAudit((text, params) => sql.query(text, params), role, "login", bucket, true);
     session.writeSession(role);
-    await guard.audit(role, "login", bucket, true);
     return { role };
   });
 
 export const logoutStaff = createServerFn({ method: "POST" }).handler(async () => {
   const session = await import("@/lib/finpivot/session.server");
+  session.assertSameOrigin();
   const role = session.currentRole();
   session.clearSession();
   const guard = await import("@/lib/finpivot/guard-db");
@@ -76,6 +80,7 @@ export const saveDesk = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const session = await import("@/lib/finpivot/session.server");
     const access = await import("@/lib/finpivot/access");
+    session.assertSameOrigin();
     const role = session.requireStaff("saveDesk");
     const parsed = parseDesk(data.body);
     if (!parsed) throw new Error("台账不正确");
@@ -96,15 +101,17 @@ export const saveDesk = createServerFn({ method: "POST" })
       if (!prev) throw new Error("台账不正确");
       const move = diffDesk(prev, parsed, role);
       if (!move.ok) throw new Error(move.reason);
+      const posting = await import("@/lib/finpivot/journal-post");
+      const guard = await import("@/lib/finpivot/guard-db");
+      await posting.postMoneyMoves(query, prev, parsed);
       const nextVersion = have + 1;
       await query(
         `insert into fin_desk (id, version, body) values ('firm', $1, $2)
          on conflict (id) do update set version = excluded.version, body = excluded.body, updated_at = now()`,
         [nextVersion, data.body],
       );
+      await guard.writeAudit(query, role, "saveDesk", "firm", true);
       return { ok: true as const, version: nextVersion };
     });
-    const guard = await import("@/lib/finpivot/guard-db");
-    await guard.audit(role ?? "owner", "saveDesk", "firm", true);
     return saved;
   });

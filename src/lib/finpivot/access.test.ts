@@ -6,9 +6,12 @@ import {
   nextRate,
   openSecret,
   readSession,
+  resolveDataKey,
   resourceHash,
+  sameOrigin,
   sealSecret,
   signSession,
+  takeFailure,
   tokenOpen,
 } from "./access.ts";
 
@@ -49,6 +52,25 @@ describe("staff session", () => {
     assert.equal(openSecret(sealed, "data-key"), "api-secret-value");
     assert.equal(openSecret(sealed, "other-key"), null);
     assert.equal(resourceHash("same").length, 16);
+  });
+
+  it("counts login failures once and then holds the window", () => {
+    let hits = 0;
+    let start = 0;
+    for (let i = 0; i < 8; i += 1) {
+      const step = takeFailure(hits, start, 1_000, 8, 10_000);
+      assert.equal(step.blocked, false);
+      hits = step.hits;
+      start = step.windowStart;
+    }
+    const blocked = takeFailure(hits, start, 1_100, 8, 10_000);
+    assert.equal(blocked.blocked, true);
+    assert.equal(blocked.hits, 8);
+    assert.equal(sameOrigin("http://127.0.0.1:4173", "127.0.0.1:4173"), true);
+    assert.equal(sameOrigin("https://evil.example", "127.0.0.1:4173"), false);
+    assert.equal(sameOrigin(null, "127.0.0.1:4173"), false);
+    assert.equal(resolveDataKey("short"), null);
+    assert.equal(resolveDataKey("k".repeat(32))?.length, 32);
   });
 
   it("closes a revoked or expired customer link", () => {

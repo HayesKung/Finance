@@ -8,9 +8,10 @@ import { leadCount } from "@/lib/finpivot/ui";
 import { BILLINGS, evidenceFunnel, type Billing } from "@/lib/finpivot/flow";
 import { needToProduct } from "@/lib/finpivot/inquiry";
 import { pushSheet } from "@/lib/finpivot/publish-client";
+import { requireStaffPage } from "@/lib/finpivot/staff-gate";
 import { useOs, type Lead, type Outreach, type Source, type Stage } from "@/lib/finpivot/store";
 
-export const Route = createFileRoute("/pipeline")({ component: PipelinePage });
+export const Route = createFileRoute("/pipeline")({ beforeLoad: () => requireStaffPage(), component: PipelinePage });
 
 const empty = {
   alias: "",

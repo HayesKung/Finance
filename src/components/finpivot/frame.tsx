@@ -1,4 +1,4 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { META } from "@/lib/finpivot/copy";
 import { PUBLIC_SITE_LAUNCHED } from "@/lib/finpivot/inquiry";
@@ -62,10 +62,10 @@ export function Frame({ children }: { children: ReactNode }) {
   const path = useRouterState({ select: (s) => s.location.pathname });
   const hash = useRouterState({ select: (s) => s.location.hash });
   const publicPage = PUBLIC.has(path);
-  useEffect(() => {
-    hydrateDesk();
-  }, []);
   useRobots(publicPage && PUBLIC_SITE_LAUNCHED);
+  if (path === "/staff/login") {
+    return <div className="min-h-screen bg-paper text-ink"><main className="mx-auto max-w-6xl px-4 py-8">{children}</main></div>;
+  }
   if (publicPage) {
     return (
       <PublicShell path={path} hash={hash}>
@@ -116,7 +116,7 @@ function PublicShell({ path, hash, children }: { path: string; hash: string; chi
       <footer className="border-t border-rule">
         <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-6 text-sm text-muted md:flex-row md:items-center md:justify-between">
           <p>{t("publicFoot")}</p>
-          <Link to="/os" className="inline-flex h-11 items-center text-sm text-muted underline decoration-rule underline-offset-4">
+          <Link to="/staff/login" className="inline-flex h-11 items-center text-sm text-muted underline decoration-rule underline-offset-4">
             {t("staffEntry")}
           </Link>
         </div>
@@ -126,12 +126,16 @@ function PublicShell({ path, hash, children }: { path: string; hash: string; chi
 }
 
 function DeskShell({ path, children }: { path: string; children: ReactNode }) {
+  const navigate = useNavigate();
   const { locale, t } = useI18n();
   const [gate, setGate] = useState<"check" | "in" | "out" | "off">("check");
   const [role, setRole] = useState<"owner" | "support" | null>(null);
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const replaceDesk = useOs((s) => s.replaceDesk);
+  useEffect(() => {
+    hydrateDesk();
+  }, []);
   useEffect(() => {
     let stop = false;
     void whoami()
@@ -213,6 +217,7 @@ function DeskShell({ path, children }: { path: string; children: ReactNode }) {
                     void logoutStaff().then(() => {
                       setRole(null);
                       setGate("out");
+                      void navigate({ to: "/staff/login" });
                     });
                   }}
                 >

@@ -5,11 +5,12 @@ import { META, STAGES } from "@/lib/finpivot/copy";
 import { canon } from "@/lib/finpivot/glossary";
 import { monthCloseReady } from "@/lib/finpivot/flow";
 import { useI18n } from "@/lib/finpivot/locale";
+import { requireStaffPage } from "@/lib/finpivot/staff-gate";
 import { deskHealth } from "@/lib/finpivot/staff-api";
 import { outreachDetail, perMonth, weekProgress } from "@/lib/finpivot/ui";
 import { useOs } from "@/lib/finpivot/store";
 
-export const Route = createFileRoute("/os")({ component: OsPage });
+export const Route = createFileRoute("/os")({ beforeLoad: () => requireStaffPage(), component: OsPage });
 
 function OsPage() {
   const { t } = useI18n();
