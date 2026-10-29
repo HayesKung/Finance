@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { canon, currencyLine, formatYuan, show } from "./glossary.ts";
+import { canon, convertAtRate, currencyLine, formatMoney, formatYuan, show } from "./glossary.ts";
 
 describe("locale labels", () => {
   it("shows English for a stored Chinese stage and maps it back", () => {
@@ -24,6 +24,14 @@ describe("locale labels", () => {
     assert.equal(currencyLine("usd", "USD").quote, "");
     assert.equal(currencyLine(undefined, undefined).differs, false);
     assert.equal(currencyLine("CNY", "CNY").differs, false);
+  });
+
+  it("converts only at an entered book rate", () => {
+    assert.equal(convertAtRate(1000, 3.67), 3670);
+    assert.equal(convertAtRate(1000, 0), null);
+    assert.equal(convertAtRate(-5, 2), null);
+    assert.match(formatMoney("en", "USD", 1000), /1,000\.00/);
+    assert.match(formatMoney("zh", "JPY", 1000), /1,000/);
   });
 
   it("translates a blocked status change without storing English", () => {

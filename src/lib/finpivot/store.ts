@@ -77,6 +77,8 @@ export type Project = {
   market: string;
   quoteCurrency: string;
   settleCurrency: string;
+  quoteAmount: number;
+  fxRate: number;
   status: ProjectStatus;
   note: string;
 };

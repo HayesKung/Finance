@@ -25,11 +25,35 @@ export function knownCurrency(code: string | undefined): Currency | "" {
   return "";
 }
 
-/** 只认 ISO 代码。两种币不同也不换算。 */
+/** 只认 ISO 代码。两种币不同只说明需要记账汇率，不自己猜。 */
 export function currencyLine(quote: string | undefined, settle: string | undefined) {
   const q = knownCurrency(quote);
   const s = knownCurrency(settle);
   return { quote: q, settle: s, differs: Boolean(q && s && q !== s) };
+}
+
+const ZERO_DECIMALS = new Set(["JPY", "VND", "IDR"]);
+
+/** 结算金额 = 报价金额 × 记账汇率。汇率不是预测，调用方必须自己传入。 */
+export function convertAtRate(amount: number, rate: number): number | null {
+  if (!Number.isFinite(amount) || amount < 0) return null;
+  if (!Number.isFinite(rate) || rate <= 0) return null;
+  return amount * rate;
+}
+
+export function formatMoney(locale: Locale, currency: string, amount: number): string {
+  const digits = ZERO_DECIMALS.has(currency) ? 0 : 2;
+  const tag = locale === "en" ? "en-US" : "zh-CN";
+  try {
+    return new Intl.NumberFormat(tag, {
+      style: "currency",
+      currency,
+      minimumFractionDigits: digits,
+      maximumFractionDigits: digits,
+    }).format(amount);
+  } catch {
+    return `${currency} ${amount.toFixed(digits)}`;
+  }
 }
 
 /** 存进浏览器的仍是中文原词。英文只在显示时替换，导回时再认回原词。 */

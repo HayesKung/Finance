@@ -4,7 +4,7 @@ import { Btn, CanonSelect, Field, Frame, Kicker, Note, inputCls } from "@/compon
 import { SOURCES } from "@/lib/finpivot/copy";
 import { CLIENT_STATUSES, PROJECT_STATUSES } from "@/lib/finpivot/flow";
 import { useI18n } from "@/lib/finpivot/locale";
-import { CURRENCIES, currencyLine } from "@/lib/finpivot/glossary";
+import { CURRENCIES, convertAtRate, currencyLine, formatMoney } from "@/lib/finpivot/glossary";
 import { cannotDelete } from "@/lib/finpivot/ui";
 import { useOs, type Client, type Project, type Source } from "@/lib/finpivot/store";
 
@@ -39,6 +39,8 @@ function ClientsPage() {
   const [projectName, setProjectName] = useState<Record<string, string>>({});
   const [quotePick, setQuotePick] = useState<Record<string, string>>({});
   const [settlePick, setSettlePick] = useState<Record<string, string>>({});
+  const [amountDraft, setAmountDraft] = useState<Record<string, string>>({});
+  const [rateDraft, setRateDraft] = useState<Record<string, string>>({});
   const [warn, setWarn] = useState("");
 
   return (
@@ -151,6 +153,11 @@ function ClientsPage() {
                   <ul className="mt-2">
                     {own.map((p) => {
                       const pair = currencyLine(p.quoteCurrency, p.settleCurrency);
+                      const amount = p.quoteAmount ?? 0;
+                      const rate = p.fxRate ?? 0;
+                      const converted = pair.differs ? convertAtRate(amount, rate) : amount > 0 ? amount : null;
+                      const showResult = converted != null && amount > 0 && (!pair.differs || rate > 0);
+                      const money = (raw: string) => raw.replace(/[^\d.]/g, "").replace(/(\..*)\./g, "$1");
                       return (
                       <li key={p.id} className="flex flex-col gap-2 border-b border-rule py-3">
                         <p className="text-sm">{p.name} · {p.market || t("marketMissing")}</p>
@@ -183,7 +190,53 @@ function ClientsPage() {
                           />
                           <Btn tone="paper" onClick={() => removeProject(p.id)}>{t("removeProject")}</Btn>
                         </div>
-                        {pair.differs ? <p className="text-xs leading-relaxed text-seal">{t("noConvert")}</p> : null}
+                        {pair.quote && pair.settle ? (
+                          <div className="flex flex-col gap-2">
+                            <label className="flex flex-col gap-1 text-xs text-muted sm:max-w-xs">
+                              {t("quoteAmount")}
+                              <input
+                                className={inputCls}
+                                inputMode="decimal"
+                                value={amountDraft[p.id] ?? (amount > 0 ? String(amount) : "")}
+                                onChange={(e) => {
+                                  const raw = money(e.target.value);
+                                  setAmountDraft({ ...amountDraft, [p.id]: raw });
+                                  const n = raw === "" || raw === "." ? 0 : Number(raw);
+                                  if (Number.isFinite(n)) updateProject(p.id, { quoteAmount: n });
+                                }}
+                              />
+                            </label>
+                            {pair.differs ? (
+                              <label className="flex flex-col gap-1 text-xs text-muted sm:max-w-md">
+                                <span>{t("fxRate")}</span>
+                                <span className="flex items-center gap-2 text-sm text-ink">
+                                  1 {pair.quote} =
+                                  <input
+                                    className={inputCls}
+                                    inputMode="decimal"
+                                    value={rateDraft[p.id] ?? (rate > 0 ? String(rate) : "")}
+                                    onChange={(e) => {
+                                      const raw = money(e.target.value);
+                                      setRateDraft({ ...rateDraft, [p.id]: raw });
+                                      const n = raw === "" || raw === "." ? 0 : Number(raw);
+                                      if (Number.isFinite(n)) updateProject(p.id, { fxRate: n });
+                                    }}
+                                  />
+                                  {pair.settle}
+                                </span>
+                              </label>
+                            ) : (
+                              <p className="text-xs text-muted">{t("sameCurrency")}</p>
+                            )}
+                            {pair.differs && !(rate > 0) ? <p className="text-xs leading-relaxed text-seal">{t("needRate")}</p> : null}
+                            {showResult ? (
+                              <p className="text-sm">
+                                {t("converted")} {formatMoney(locale, pair.differs ? pair.settle : pair.quote, converted)}
+                              </p>
+                            ) : null}
+                            {pair.differs && rate > 0 ? <p className="text-xs leading-relaxed text-muted">{t("noConvert")}</p> : null}
+                          </div>
+                        ) : null}
                       </li>
                       );
                     })}
@@ -227,6 +280,8 @@ function ClientsPage() {
                             market: c.market,
                             quoteCurrency: quotePick[c.id] ?? "",
                             settleCurrency: settlePick[c.id] ?? "",
+                            quoteAmount: 0,
+                            fxRate: 0,
                             status: "立项",
                             note: "",
                           });

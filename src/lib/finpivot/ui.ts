@@ -216,8 +216,13 @@ const zh = {
   currencyUnset: "未记",
   quoteCurrency: "报价币",
   settleCurrency: "结算币",
-  noConvert: "两种币不同，只记录，不换算，不预测汇率。",
-  fxRule: "服务费只收人民币。项目的报价币和结算币分开记，不换算。",
+  noConvert: "记账汇率由财务人员填写。不是预测，也不代替银行牌价。",
+  fxRule: "服务费只收人民币，不按汇率改写。项目合同额按你填的记账汇率换成结算币。",
+  quoteAmount: "报价金额",
+  fxRate: "记账汇率",
+  needRate: "两种币不同。填上记账汇率后，才把报价金额换成结算币。",
+  sameCurrency: "报价币和结算币相同，金额不换算。",
+  converted: "折合",
 } as const;
 
 export type UiKey = keyof typeof zh;
@@ -437,8 +442,13 @@ const en: { [K in UiKey]: string } = {
   currencyUnset: "Not recorded",
   quoteCurrency: "Quote currency",
   settleCurrency: "Settlement currency",
-  noConvert: "The two currencies differ. Record them. Do not convert, and do not forecast the rate.",
-  fxRule: "Service fees stay in CNY. A project's quote currency and settlement currency are recorded apart, and are not converted.",
+  noConvert: "The book rate is entered by the finance principal. It is not a forecast, and it is not a bank board rate.",
+  fxRule: "Service fees stay in CNY and are not rewritten by a rate. A project contract converts at the book rate you enter.",
+  quoteAmount: "Quote amount",
+  fxRate: "Book rate",
+  needRate: "The two currencies differ. Enter the book rate to convert the quote amount.",
+  sameCurrency: "Quote and settlement use the same currency, so the amount is not converted.",
+  converted: "Equals",
 };
 
 export function t(locale: Locale, key: UiKey): string {
