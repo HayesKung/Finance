@@ -11,6 +11,11 @@ import {
   templateSeeds,
 } from "@/lib/finpivot/copy";
 import {
+  inquiryToLead,
+  makeInquiryRef,
+  type Inquiry,
+} from "@/lib/finpivot/inquiry";
+import {
   buildPlan,
   deliverableNames,
   gateMove,
@@ -153,6 +158,12 @@ type OsState = {
   orders: Order[];
   payments: Payment[];
   deliverables: Deliverable[];
+  inquiries: Inquiry[];
+  addInquiry: (
+    row: Omit<Inquiry, "id" | "ref" | "createdAt" | "status" | "leadId">,
+  ) => Inquiry;
+  acceptInquiry: (id: string) => void;
+  declineInquiry: (id: string) => void;
   addLead: (lead: Omit<Lead, "id">) => void;
   updateLead: (id: string, patch: Partial<Lead>) => void;
   removeLead: (id: string) => void;
@@ -263,6 +274,38 @@ export const useOs = create<OsState>()(
       orders: [],
       payments: [],
       deliverables: [],
+      inquiries: [],
+      addInquiry: (row) => {
+        const now = new Date();
+        const id = uid();
+        const inquiry: Inquiry = {
+          ...row,
+          id,
+          ref: makeInquiryRef(now.toISOString().slice(0, 10).replace(/-/g, ""), id),
+          createdAt: now.toISOString(),
+          status: "待处理",
+          leadId: "",
+        };
+        set((s) => ({ inquiries: [inquiry, ...(s.inquiries ?? [])] }));
+        return inquiry;
+      },
+      acceptInquiry: (id) =>
+        set((s) => {
+          const list = s.inquiries ?? [];
+          const inq = list.find((item) => item.id === id);
+          if (!inq || inq.status !== "待处理") return s;
+          const leadId = uid();
+          return {
+            leads: [{ ...inquiryToLead(inq), id: leadId }, ...s.leads],
+            inquiries: list.map((item) => (item.id === id ? { ...item, status: "已转入名单", leadId } : item)),
+          };
+        }),
+      declineInquiry: (id) =>
+        set((s) => ({
+          inquiries: (s.inquiries ?? []).map((item) =>
+            item.id === id && item.status === "待处理" ? { ...item, status: "不跟进" } : item,
+          ),
+        })),
       addLead: (lead) => set((s) => ({ leads: [{ ...lead, id: uid() }, ...s.leads] })),
       updateLead: (id, patch) =>
         set((s) => ({

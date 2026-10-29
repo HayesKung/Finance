@@ -29,6 +29,8 @@ function OsPage() {
 function Counters() {
   const { locale, t, show, copy } = useI18n();
   const leads = useOs((s) => s.leads);
+  const inquiries = useOs((s) => s.inquiries ?? []);
+  const waiting = inquiries.filter((item) => item.status === "待处理").length;
   const outreach = useOs((s) => s.outreach);
   const booked = outreach.filter((o) => o.result === "已约到").length;
   const byStage = STAGES.map((st) => ({ st, n: leads.filter((l) => l.stage === st).length }));
@@ -52,6 +54,7 @@ function Counters() {
         <Link to="/pipeline" className="inline-flex h-11 items-center border border-ink bg-ink px-4 text-sm text-paper">{t("goLeads")}</Link>
         <Link to="/orders" className="inline-flex h-11 items-center border border-rule px-4 text-sm">{t("goOrders")}</Link>
       </div>
+      <p className="mt-4 text-sm text-muted">{t("inqPending")}：{waiting}</p>
       <p className="mt-4 text-sm text-muted">{t("funnelPrefix")}：{copy.funnelMetrics.join(locale === "en" ? ", " : "、")}。{t("funnelSuffix")}</p>
     </section>
   );

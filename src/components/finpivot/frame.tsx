@@ -1,6 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 import { META } from "@/lib/finpivot/copy";
+import { PUBLIC_SITE_LAUNCHED } from "@/lib/finpivot/inquiry";
 import { useI18n } from "@/lib/finpivot/locale";
 import { hydrateDesk } from "@/lib/finpivot/store";
 import { footerLine } from "@/lib/finpivot/ui";
@@ -8,7 +9,7 @@ import { footerLine } from "@/lib/finpivot/ui";
 const browse = [
   { to: "/", label: "navHome", hash: "" },
   { to: "/", label: "navOffer", hash: "sheet" },
-  { to: "/diagnose", label: "navDiagnose", hash: "" },
+  { to: "/ask", label: "navAsk", hash: "" },
 ] as const;
 
 const desk = [
@@ -19,6 +20,22 @@ const desk = [
   { to: "/playbook", label: "navPlay" },
   { to: "/templates", label: "navTemplates" },
 ] as const;
+
+const PUBLIC = new Set(["/", "/ask"]);
+
+function useRobots(indexable: boolean) {
+  useEffect(() => {
+    const content = indexable ? "index, follow" : "noindex, nofollow";
+    let meta = document.head.querySelector('meta[name="robots"]');
+    if (!(meta instanceof HTMLMetaElement)) {
+      const created = document.createElement("meta");
+      created.setAttribute("name", "robots");
+      document.head.appendChild(created);
+      meta = created;
+    }
+    meta.setAttribute("content", content);
+  }, [indexable]);
+}
 
 export function LocaleSwitch() {
   const { locale, setLocale, t } = useI18n();
@@ -40,12 +57,73 @@ export function LocaleSwitch() {
 }
 
 export function Frame({ children }: { children: ReactNode }) {
-  const { locale, t } = useI18n();
   const path = useRouterState({ select: (s) => s.location.pathname });
   const hash = useRouterState({ select: (s) => s.location.hash });
+  const publicPage = PUBLIC.has(path);
   useEffect(() => {
     hydrateDesk();
   }, []);
+  useRobots(publicPage && PUBLIC_SITE_LAUNCHED);
+  if (publicPage) {
+    return (
+      <PublicShell path={path} hash={hash}>
+        {children}
+      </PublicShell>
+    );
+  }
+  return <DeskShell path={path}>{children}</DeskShell>;
+}
+
+function PublicShell({ path, hash, children }: { path: string; hash: string; children: ReactNode }) {
+  const { t } = useI18n();
+  return (
+    <div className="min-h-screen bg-paper text-ink">
+      <div className="bg-ink text-paper">
+        <p className="mx-auto max-w-6xl px-4 py-2 text-sm leading-snug">{t("publicBanner")}</p>
+      </div>
+      <header className="sticky top-0 z-10 border-b border-rule bg-paper/95 backdrop-blur-sm">
+        <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3">
+          <div className="flex items-center justify-between gap-3">
+            <Link to="/" className="min-w-0">
+              <p className="text-xs tracking-widest text-muted">{t("draft")}</p>
+              <p className="truncate font-serif text-xl text-ink">{t("appName")}</p>
+            </Link>
+            <LocaleSwitch />
+          </div>
+          <nav className="flex gap-2 overflow-x-auto pb-1">
+            {browse.map((l) => {
+              const on = l.to === "/ask" ? path === "/ask" : path === "/" && (l.hash ? hash === l.hash : hash === "");
+              return (
+                <Link
+                  key={l.label}
+                  to={l.to}
+                  hash={l.hash || undefined}
+                  className={`inline-flex h-11 shrink-0 items-center border px-3 text-sm ${
+                    on ? "border-ink bg-ink text-paper" : "border-rule bg-paper text-ink"
+                  }`}
+                >
+                  {t(l.label)}
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
+      </header>
+      <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
+      <footer className="border-t border-rule">
+        <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-6 text-sm text-muted md:flex-row md:items-center md:justify-between">
+          <p>{t("publicFoot")}</p>
+          <Link to="/os" className="inline-flex h-11 items-center text-sm text-muted underline decoration-rule underline-offset-4">
+            {t("staffEntry")}
+          </Link>
+        </div>
+      </footer>
+    </div>
+  );
+}
+
+function DeskShell({ path, children }: { path: string; children: ReactNode }) {
+  const { locale, t } = useI18n();
   return (
     <div className="min-h-screen bg-paper text-ink">
       <div className="bg-seal text-seal-ink">
@@ -53,52 +131,35 @@ export function Frame({ children }: { children: ReactNode }) {
       </div>
       <header className="sticky top-0 z-10 border-b border-rule bg-paper/95 backdrop-blur-sm">
         <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3">
-          <div className="flex items-center justify-between gap-3">
-            <Link to="/" className="min-w-0">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <Link to="/os" className="min-w-0">
               <p className="text-xs tracking-widest text-muted">{META.code}</p>
               <p className="truncate font-serif text-xl text-ink">{t("appName")}</p>
             </Link>
-            <nav className="flex shrink-0 gap-2">
-              {browse.map((l) => {
-                const on =
-                  l.to === "/diagnose"
-                    ? path === "/diagnose"
-                    : path === "/" && (l.hash ? hash === l.hash : hash === "");
-                return (
-                  <Link
-                    key={l.label}
-                    to={l.to}
-                    hash={l.hash || undefined}
-                    className={`inline-flex h-11 items-center border px-3 text-sm ${
-                      on ? "border-ink bg-ink text-paper" : "border-rule bg-paper text-ink"
-                    }`}
-                  >
-                    {t(l.label)}
-                  </Link>
-                );
-              })}
-            </nav>
+            <div className="flex items-center gap-2">
+              <Link to="/" className="inline-flex h-11 items-center border border-rule px-3 text-sm text-ink">
+                {t("seePublic")}
+              </Link>
+              <LocaleSwitch />
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <nav className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto pb-1" aria-label={t("deskLabel")}>
-              <span className="shrink-0 text-xs text-muted">{t("deskLabel")}</span>
-              {desk.map((l) => {
-                const on = path === l.to;
-                return (
-                  <Link
-                    key={l.to}
-                    to={l.to}
-                    className={`inline-flex h-11 shrink-0 items-center px-2 text-sm ${
-                      on ? "border-b-2 border-seal text-ink" : "text-muted"
-                    }`}
-                  >
-                    {t(l.label)}
-                  </Link>
-                );
-              })}
-            </nav>
-            <LocaleSwitch />
-          </div>
+          <nav className="flex min-w-0 items-center gap-2 overflow-x-auto pb-1" aria-label={t("deskLabel")}>
+            <span className="shrink-0 text-xs text-muted">{t("deskLabel")}</span>
+            {desk.map((l) => {
+              const on = path === l.to;
+              return (
+                <Link
+                  key={l.to}
+                  to={l.to}
+                  className={`inline-flex h-11 shrink-0 items-center px-2 text-sm ${
+                    on ? "border-b-2 border-seal text-ink" : "text-muted"
+                  }`}
+                >
+                  {t(l.label)}
+                </Link>
+              );
+            })}
+          </nav>
         </div>
       </header>
       <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>

@@ -26,12 +26,12 @@ function Home() {
           <h1 className="font-serif text-4xl leading-tight text-ink md:text-5xl">{t("heroTitle")}</h1>
           <p className="mt-4 max-w-xl text-lg leading-relaxed text-muted">{t("heroLede")}</p>
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-            <a href="#sheet" className="inline-flex h-11 items-center justify-center border border-ink bg-ink px-4 text-sm text-paper">
+            <Link to="/ask" className="inline-flex h-11 items-center justify-center border border-ink bg-ink px-4 text-sm text-paper">
+              {t("ctaAsk")}
+            </Link>
+            <a href="#sheet" className="inline-flex h-11 items-center justify-center border border-rule px-4 text-sm text-ink">
               {t("ctaPrices")}
             </a>
-            <Link to="/diagnose" className="inline-flex h-11 items-center justify-center border border-rule px-4 text-sm text-ink">
-              {t("ctaDiagnose")}
-            </Link>
           </div>
         </div>
         <figure className="md:col-span-6">
@@ -52,8 +52,25 @@ function Home() {
         ))}
       </section>
 
+      <section className="mt-14">
+        <Kicker n="02">{t("useKicker")}</Kicker>
+        <ol className="grid gap-3 md:grid-cols-3">
+          {[
+            [t("use1Title"), t("use1Body")],
+            [t("use2Title"), t("use2Body")],
+            [t("use3Title"), t("use3Body")],
+          ].map(([title, body], i) => (
+            <li key={title} className="border border-rule bg-paper-2 p-4">
+              <span className="font-serif text-2xl text-seal">{i + 1}</span>
+              <h3 className="mt-2 font-serif text-xl">{title}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-muted">{body}</p>
+            </li>
+          ))}
+        </ol>
+      </section>
+
       <section id="sheet" className="mt-14 scroll-mt-28">
-        <Kicker n="01">{t("servicesKicker")}</Kicker>
+        <Kicker n="03">{t("servicesKicker")}</Kicker>
         <Note>{t("servicesNote")}</Note>
         <div className="mt-6 grid gap-6 lg:grid-cols-3">
           {copy.products.map((p) => (
@@ -73,7 +90,7 @@ function Home() {
       </section>
 
       <section className="mt-14">
-        <Kicker n="02">{t("flowKicker")}</Kicker>
+        <Kicker n="04">{t("flowKicker")}</Kicker>
         <ol className="grid gap-3 md:grid-cols-5">
           {copy.flow.map((step, i) => (
             <li key={step} className="border border-rule bg-paper-2 p-4">
@@ -88,7 +105,7 @@ function Home() {
 
       <section className="mt-14 grid gap-8 md:grid-cols-12">
         <div className="md:col-span-5">
-          <Kicker n="03">{t("whoKicker")}</Kicker>
+          <Kicker n="05">{t("whoKicker")}</Kicker>
           <ul className="space-y-3">
             {copy.audiences.map((a) => (
               <li key={a} className="border-b border-rule pb-3 text-sm leading-relaxed">{a}</li>
@@ -96,7 +113,7 @@ function Home() {
           </ul>
         </div>
         <div className="md:col-span-7">
-          <Kicker n="04">{t("capKicker")}</Kicker>
+          <Kicker n="06">{t("capKicker")}</Kicker>
           <div className="ledger">
             {copy.capabilities.map(([from, to]) => (
               <div key={from} className="ledger-row md:grid-cols-2 md:items-center">
@@ -109,7 +126,7 @@ function Home() {
       </section>
 
       <section className="mt-14">
-        <Kicker n="05">{t("wontKicker")}</Kicker>
+        <Kicker n="07">{t("wontKicker")}</Kicker>
         <ul className="grid gap-3 md:grid-cols-2">
           {copy.wontDo.map((w) => (
             <li key={w} className="flex gap-3 border border-rule p-4 text-sm leading-relaxed">
@@ -120,16 +137,45 @@ function Home() {
         </ul>
       </section>
 
+      <section className="mt-14">
+        <Kicker n="08">{t("splitKicker")}</Kicker>
+        <div className="grid border border-ink md:grid-cols-2">
+          <div className="border-b border-ink p-4 md:border-r md:border-b-0">
+            <p className="font-serif text-xl">{t("splitPublic")}</p>
+          </div>
+          <div className="bg-paper-2 p-4">
+            <p className="font-serif text-xl">{t("splitDesk")}</p>
+          </div>
+          {(
+            [
+              ["splitWho", "splitWhoP", "splitWhoD"],
+              ["splitDo", "splitDoP", "splitDoD"],
+              ["splitHide", "splitHideP", "splitHideD"],
+              ["splitData", "splitDataP", "splitDataD"],
+              ["splitDoor", "splitDoorP", "splitDoorD"],
+            ] as const
+          ).map(([label, pub, desk]) => (
+            <div key={label} className="contents">
+              <div className="border-t border-rule p-4">
+                <p className="text-xs text-muted">{t(label)}</p>
+                <p className="mt-1 text-sm leading-relaxed">{t(pub)}</p>
+              </div>
+              <div className="border-t border-rule bg-paper-2 p-4">
+                <p className="text-xs text-muted">{t(label)}</p>
+                <p className="mt-1 text-sm leading-relaxed">{t(desk)}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
       <section className="mt-14 grid gap-6 border border-ink md:grid-cols-2">
         <div className="bg-ink p-6 text-paper">
           <p className="font-serif text-2xl">{t("nextTitle")}</p>
           <p className="mt-3 text-sm leading-relaxed text-paper-2">{t("nextBody")}</p>
-          <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-            <Link to="/diagnose" className="inline-flex h-11 items-center justify-center bg-paper px-4 text-sm text-ink">
-              {t("openDiagnose")}
-            </Link>
-            <Link to="/os" className="inline-flex h-11 items-center justify-center border border-paper px-4 text-sm text-paper">
-              {t("openDesk")}
+          <div className="mt-5">
+            <Link to="/ask" className="inline-flex h-11 items-center justify-center bg-paper px-4 text-sm text-ink">
+              {t("ctaAsk")}
             </Link>
           </div>
         </div>

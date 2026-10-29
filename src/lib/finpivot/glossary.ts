@@ -132,6 +132,14 @@ const EN: Record<string, string> = {
   待小m核验: "Waiting for 小m",
   已核验: "Checked",
   "2026-10-28 至 2026-11-04": "2026-10-28 to 2026-11-04",
+  回款与结算: "Collections and settlement",
+  单证与退税: "Documents and rebate files",
+  项目结算: "Project settlement",
+  还不确定: "Not sure yet",
+  对外页面: "Public page",
+  待处理: "Waiting",
+  已转入名单: "Moved to the lead list",
+  不跟进: "Not followed up",
 };
 
 const ZH = new Map(Object.entries(EN).map(([zh, en]) => [en.toLowerCase(), zh]));

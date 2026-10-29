@@ -31,6 +31,9 @@ const SCENES = ["老关系", "转介绍", "内容来询"] as const;
 function PipelinePage() {
   const { locale, t, show } = useI18n();
   const leads = useOs((s) => s.leads);
+  const inquiries = useOs((s) => s.inquiries ?? []);
+  const acceptInquiry = useOs((s) => s.acceptInquiry);
+  const declineInquiry = useOs((s) => s.declineInquiry);
   const addLead = useOs((s) => s.addLead);
   const updateLead = useOs((s) => s.updateLead);
   const removeLead = useOs((s) => s.removeLead);
@@ -120,7 +123,36 @@ function PipelinePage() {
 
   return (
     <Frame>
-      <Kicker n="05">{t("pipeKicker")}</Kicker>
+      <Kicker n="05">{t("inqKicker")}</Kicker>
+      {inquiries.length === 0 ? (
+        <Note>{t("inqEmpty")}</Note>
+      ) : (
+        <ul className="border-t border-ink">
+          {inquiries.map((item) => (
+            <li key={item.id} className="grid gap-3 border-b border-rule py-4 md:grid-cols-12 md:items-center">
+              <div className="md:col-span-8">
+                <p className="font-serif text-xl">{item.ref}</p>
+                <p className="mt-1 text-sm">
+                  {item.company} · {item.contactName} · {item.market || "—"} · {show(item.need)}
+                </p>
+                <p className="mt-1 text-sm text-muted">
+                  {show(item.status)} · {item.createdAt.slice(0, 10)} · {item.contact}
+                </p>
+                {item.note ? <p className="mt-1 text-sm leading-relaxed text-muted">{item.note}</p> : null}
+              </div>
+              {item.status === "待处理" ? (
+                <div className="flex flex-col gap-2 md:col-span-4 md:items-end">
+                  <Btn onClick={() => acceptInquiry(item.id)}>{t("inqAccept")}</Btn>
+                  <Btn tone="paper" onClick={() => declineInquiry(item.id)}>{t("inqDecline")}</Btn>
+                </div>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div className="mt-14">
+      <Kicker n="06">{t("pipeKicker")}</Kicker>
       <Note>
         {t("pipeNote")} {leadCount(locale, leads.length)}
       </Note>
@@ -292,6 +324,7 @@ function PipelinePage() {
           )}
         </ul>
       </section>
+      </div>
     </Frame>
   );
 }
