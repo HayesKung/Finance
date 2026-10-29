@@ -1,12 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Btn, Field, Frame, Kicker, Note, areaCls, inputCls } from "@/components/finpivot/frame";
-import { IMPACTS, closeScript, questionGroups } from "@/lib/finpivot/copy";
+import { Btn, CanonSelect, Field, Frame, Kicker, Note, areaCls, inputCls } from "@/components/finpivot/frame";
+import { IMPACTS } from "@/lib/finpivot/copy";
+import { canon } from "@/lib/finpivot/glossary";
+import { useI18n } from "@/lib/finpivot/locale";
+import { askedLine } from "@/lib/finpivot/ui";
 import { useOs } from "@/lib/finpivot/store";
 
 export const Route = createFileRoute("/diagnose")({ component: DiagnosePage });
 
 function DiagnosePage() {
+  const { locale, t, show, copy } = useI18n();
   const [copied, setCopied] = useState(false);
   const answers = useOs((s) => s.answers);
   const setAnswer = useOs((s) => s.setAnswer);
@@ -16,59 +20,54 @@ function DiagnosePage() {
   const removeRisk = useOs((s) => s.removeRisk);
   const alias = useOs((s) => s.diagAlias);
   const setAlias = useOs((s) => s.setDiagAlias);
+  const asked = copy.questionGroups.reduce((n, g) => n + g.items.filter((item) => answers[item.id]?.checked).length, 0);
+  const total = copy.questionGroups.reduce((n, g) => n + g.items.length, 0);
 
   const markdown = useMemo(() => {
     const lines = [
-      `# 诊断风险清单`,
-      `客户脱敏简称：${alias || "（未填）"}`,
-      `规则：只给风险清单，不给完整方案。不预测汇率，不承诺退税、贷款与回款。`,
+      `# ${t("mdTitle")}`,
+      `${t("mdAlias")}：${alias || t("mdUnset")}`,
+      t("mdRule"),
       ``,
-      `## 已问到的情况`,
+      `## ${t("mdAsked")}`,
     ];
-    questionGroups.forEach((g) => {
+    copy.questionGroups.forEach((g) => {
       lines.push(`### ${g.title}`);
       g.items.forEach((item) => {
         const a = answers[item.id];
         if (!a?.checked && !a?.note) return;
-        lines.push(`- ${a?.checked ? "已问" : "未完成"} ${item.text}`);
-        if (a?.note) lines.push(`  记录：${a.note}`);
+        lines.push(`- ${a?.checked ? t("mdAskedItem") : t("mdOpenItem")} ${item.text}`);
+        if (a?.note) lines.push(`  ${t("mdRecord")}：${a.note}`);
       });
     });
-    lines.push(``, `## 风险清单`);
+    lines.push(``, `## ${t("mdRisks")}`);
     risks.forEach((r, i) => {
-      lines.push(`${i + 1}. ${r.point || "（空）"}｜影响：${r.impact}｜下一步：${r.next}`);
+      lines.push(`${i + 1}. ${r.point || t("mdEmpty")}｜${t("mdImpact")}：${show(r.impact)}｜${t("mdNext")}：${show(r.next)}`);
     });
-    lines.push(``, closeScript);
+    lines.push(``, copy.closeScript);
     return lines.join("\n");
-  }, [alias, answers, risks]);
+  }, [alias, answers, risks, copy, show, t]);
 
   return (
     <Frame>
       <section className="grid items-center gap-6 md:grid-cols-12">
         <div className="md:col-span-7">
-          <Kicker n="04">免费诊断</Kicker>
-          <p className="max-w-xl text-lg leading-relaxed">三十分钟，只出一张风险清单。完整做法留在付费方案里。</p>
+          <Kicker n="04">{t("diagKicker")}</Kicker>
+          <p className="max-w-xl text-lg leading-relaxed">{t("diagLede")}</p>
           <div className="mt-4">
-            <Note>不要在记录里写私人电话。数据只留在这台浏览器。</Note>
+            <Note>{t("diagNote")}</Note>
           </div>
         </div>
-        <img
-          src="/fin/export.jpg"
-          alt="摊开的出口单据，表示诊断先核对单证和收汇"
-          className="shot border border-rule md:col-span-5"
-        />
+        <img src="/fin/export.jpg" alt={t("diagShotAlt")} className="shot border border-rule md:col-span-5" />
       </section>
       <div className="mt-6 max-w-md">
-        <Field label="客户脱敏简称">
-          <input className={inputCls} value={alias} onChange={(e) => setAlias(e.target.value)} placeholder="例如：华东门窗-甲" />
+        <Field label={t("aliasLabel")}>
+          <input className={inputCls} value={alias} onChange={(e) => setAlias(e.target.value)} placeholder={t("aliasPh")} />
         </Field>
       </div>
-      <p className="mt-4 text-sm text-muted">
-        已问 {questionGroups.reduce((n, g) => n + g.items.filter((item) => answers[item.id]?.checked).length, 0)} /{" "}
-        {questionGroups.reduce((n, g) => n + g.items.length, 0)}
-      </p>
+      <p className="mt-4 text-sm text-muted">{askedLine(locale, asked, total)}</p>
       <div className="mt-8 flex flex-col gap-8">
-        {questionGroups.map((g, gi) => (
+        {copy.questionGroups.map((g, gi) => (
           <section key={g.title}>
             <h3 className="font-serif text-xl">
               {gi + 1}. {g.title}
@@ -78,26 +77,13 @@ function DiagnosePage() {
                 const a = answers[item.id] ?? { checked: false, note: "" };
                 return (
                   <li key={item.id} className="border-b border-rule py-3">
-                    <button
-                      type="button"
-                      onClick={() => setAnswer(item.id, { checked: !a.checked })}
-                      className="flex w-full items-start gap-3 text-left"
-                    >
-                      <span
-                        className={`mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center border text-xs ${
-                          a.checked ? "border-seal bg-seal text-seal-ink" : "border-rule"
-                        }`}
-                      >
+                    <button type="button" onClick={() => setAnswer(item.id, { checked: !a.checked })} className="flex w-full items-start gap-3 text-left">
+                      <span className={`mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center border text-xs ${a.checked ? "border-seal bg-seal text-seal-ink" : "border-rule"}`}>
                         {a.checked ? "✓" : ""}
                       </span>
                       <span className="text-sm leading-relaxed">{item.text}</span>
                     </button>
-                    <textarea
-                      className={`${areaCls} mt-2`}
-                      placeholder="只记公开事实，不记私人联系方式"
-                      value={a.note}
-                      onChange={(e) => setAnswer(item.id, { note: e.target.value })}
-                    />
+                    <textarea className={`${areaCls} mt-2`} placeholder={t("notePh")} value={a.note} onChange={(e) => setAnswer(item.id, { note: e.target.value })} />
                   </li>
                 );
               })}
@@ -107,55 +93,41 @@ function DiagnosePage() {
       </div>
 
       <section className="mt-10">
-        <Kicker n="07">风险清单</Kicker>
+        <Kicker n="07">{t("riskKicker")}</Kicker>
         <div className="flex flex-col gap-4">
           {risks.map((r, i) => (
             <div key={r.id} className="grid gap-2 border-b border-rule pb-4 md:grid-cols-12">
               <p className="font-serif text-seal md:col-span-1">{i + 1}</p>
               <div className="md:col-span-5">
-                <Field label="风险点">
+                <Field label={t("riskPoint")}>
                   <input className={inputCls} value={r.point} onChange={(e) => updateRisk(r.id, { point: e.target.value })} />
                 </Field>
               </div>
               <div className="md:col-span-2">
-                <Field label="影响">
-                  <select
-                    className={inputCls}
-                    value={r.impact}
-                    onChange={(e) => updateRisk(r.id, { impact: e.target.value as (typeof IMPACTS)[number] })}
-                  >
-                    {IMPACTS.map((x) => (
-                      <option key={x}>{x}</option>
-                    ))}
-                  </select>
+                <Field label={t("impact")}>
+                  <CanonSelect value={r.impact} options={IMPACTS} onChange={(value) => updateRisk(r.id, { impact: value as (typeof IMPACTS)[number] })} />
                 </Field>
               </div>
               <div className="md:col-span-3">
-                <Field label="建议下一步">
-                  <input className={inputCls} value={r.next} onChange={(e) => updateRisk(r.id, { next: e.target.value })} />
+                <Field label={t("nextStep")}>
+                  <input className={inputCls} value={show(r.next)} onChange={(e) => updateRisk(r.id, { next: canon(e.target.value) })} />
                 </Field>
               </div>
               <div className="md:col-span-1 md:self-end">
-                <Btn tone="paper" onClick={() => removeRisk(r.id)}>
-                  删
-                </Btn>
+                <Btn tone="paper" onClick={() => removeRisk(r.id)}>{t("removeShort")}</Btn>
               </div>
             </div>
           ))}
         </div>
         <div className="mt-3">
-          <Btn tone="paper" onClick={addRisk}>
-            加一条风险
-          </Btn>
+          <Btn tone="paper" onClick={addRisk}>{t("addRisk")}</Btn>
         </div>
       </section>
 
       <section className="mt-10">
-        <h3 className="font-serif text-xl">诊断后转化话术</h3>
-        <p className="mt-3 max-w-3xl leading-relaxed">{closeScript}</p>
-        <pre className="mt-4 overflow-x-auto border border-rule bg-paper-2 p-4 text-sm leading-relaxed whitespace-pre-wrap">
-          {markdown}
-        </pre>
+        <h3 className="font-serif text-xl">{t("closeTitle")}</h3>
+        <p className="mt-3 max-w-3xl leading-relaxed">{copy.closeScript}</p>
+        <pre className="mt-4 overflow-x-auto border border-rule bg-paper-2 p-4 text-sm leading-relaxed whitespace-pre-wrap">{markdown}</pre>
         <div className="mt-3">
           <Btn
             onClick={() => {
@@ -165,7 +137,7 @@ function DiagnosePage() {
               });
             }}
           >
-            {copied ? "已复制" : "复制风险清单"}
+            {copied ? t("copied") : t("copyList")}
           </Btn>
         </div>
       </section>

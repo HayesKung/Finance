@@ -1,13 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { Btn, Field, Frame, Kicker, Note, inputCls } from "@/components/finpivot/frame";
+import { Btn, CanonSelect, Field, Frame, Kicker, Note, inputCls } from "@/components/finpivot/frame";
 import { PRODUCTS } from "@/lib/finpivot/copy";
-import { BILLINGS, E2E_STEPS, ORDER_STATUSES, nextStatuses } from "@/lib/finpivot/flow";
+import { BILLINGS, nextStatuses } from "@/lib/finpivot/flow";
+import { useI18n } from "@/lib/finpivot/locale";
+import { moveLabel, openOrdersLine } from "@/lib/finpivot/ui";
 import { useOs, type Order, type Product } from "@/lib/finpivot/store";
 
 export const Route = createFileRoute("/orders")({ component: OrdersPage });
 
 function OrdersPage() {
+  const { locale, t, show, yuan, copy } = useI18n();
   const clients = useOs((s) => s.clients);
   const projects = useOs((s) => s.projects);
   const orders = useOs((s) => s.orders);
@@ -29,26 +32,23 @@ function OrdersPage() {
   const clientProjects = projects.filter((p) => p.clientId === clientId);
   const open = orders.filter((o) => o.status !== "已取消" && o.status !== "已交付");
   const outstanding = payments.reduce((sum, p) => sum + Math.max(0, p.expectedYuan - p.receivedYuan), 0);
+  const priced = PRODUCTS.filter((p) => p !== "未定");
 
   return (
     <Frame>
-      <Kicker n="10">订单与收款</Kicker>
-      <Note>
-        这是服务费台账，不是支付通道。不扣款，不代收客户的项目回款，也不经手客户资金。先收定金或当月预收才允许开工；交付物没齐、款没清，订单停在未交付。
-      </Note>
+      <Kicker n="10">{t("orderKicker")}</Kicker>
+      <Note>{t("orderNote")}</Note>
       <ol className="mt-4 grid gap-2 md:grid-cols-4">
-        {E2E_STEPS.map((step, i) => (
+        {copy.e2eSteps.map((step, i) => (
           <li key={step} className="border border-rule px-3 py-2 text-sm leading-relaxed">
             <span className="font-serif text-seal">{i + 1}</span> {step}
           </li>
         ))}
       </ol>
-      <p className="mt-4 text-sm text-muted">
-        未完成订单 {open.length} 张 · 服务费未收 {outstanding.toLocaleString("zh-CN")} 元
-      </p>
+      <p className="mt-4 text-sm text-muted">{openOrdersLine(locale, open.length, yuan(outstanding))}</p>
 
       <div className="mt-6 grid gap-3 md:grid-cols-3">
-        <Field label="客户">
+        <Field label={t("client")}>
           <select
             className={inputCls}
             value={clientId}
@@ -57,48 +57,34 @@ function OrdersPage() {
               setProjectId("");
             }}
           >
-            <option value="">选择客户</option>
+            <option value="">{t("pickClient")}</option>
             {clients.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.alias}
-              </option>
+              <option key={c.id} value={c.id}>{c.alias}</option>
             ))}
           </select>
         </Field>
-        <Field label="项目（可空）">
+        <Field label={t("projectOptional")}>
           <select className={inputCls} value={projectId} onChange={(e) => setProjectId(e.target.value)}>
-            <option value="">不挂项目</option>
+            <option value="">{t("noProject")}</option>
             {clientProjects.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
+              <option key={p.id} value={p.id}>{p.name}</option>
             ))}
           </select>
         </Field>
-        <Field label="产品">
-          <select className={inputCls} value={product} onChange={(e) => setProduct(e.target.value as Product)}>
-            {PRODUCTS.filter((p) => p !== "未定").map((p) => (
-              <option key={p}>{p}</option>
-            ))}
-          </select>
+        <Field label={t("product")}>
+          <CanonSelect value={product} options={priced} onChange={(value) => setProduct(value as Product)} />
         </Field>
-        <Field label="收费方式">
-          <select className={inputCls} value={billing} onChange={(e) => setBilling(e.target.value as Order["billing"])}>
-            {BILLINGS.map((b) => (
-              <option key={b}>{b}</option>
-            ))}
-          </select>
+        <Field label={t("billing")}>
+          <CanonSelect value={billing} options={BILLINGS} onChange={(value) => setBilling(value as Order["billing"])} />
         </Field>
-        <Field label="订单说明">
-          <input className={inputCls} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="例如 10 月出口财务包" />
+        <Field label={t("orderTitle")}>
+          <input className={inputCls} value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t("orderPh")} />
         </Field>
-        <Field label="服务费（元）">
+        <Field label={t("fee")}>
           <input className={inputCls} inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^\d]/g, ""))} />
         </Field>
       </div>
-      <p className="mt-3 text-sm text-muted">
-        按单：50% 定金后开工，尾款交付前结清。月度：当月费用预收后才做这个月。阶段：首段费用到账后开工，其余在交付前结清。金额由财务人员确认，系统不自动报价。
-      </p>
+      <p className="mt-3 text-sm text-muted">{t("feeRule")}</p>
       <div className="mt-3">
         <Btn
           onClick={() => {
@@ -109,13 +95,13 @@ function OrdersPage() {
             setAmount("");
           }}
         >
-          建立草稿订单
+          {t("createDraft")}
         </Btn>
       </div>
 
       <ul className="mt-8 border-t border-ink">
         {orders.length === 0 ? (
-          <li className="py-6 text-sm text-muted">还没有订单。先有客户，再写明产品、收费方式和金额。</li>
+          <li className="py-6 text-sm text-muted">{t("emptyOrders")}</li>
         ) : (
           orders.map((o) => {
             const client = clients.find((c) => c.id === o.clientId);
@@ -125,23 +111,19 @@ function OrdersPage() {
             return (
               <li key={o.id} className="border-b border-rule py-5">
                 <div className="flex flex-col gap-1 md:flex-row md:items-baseline md:justify-between">
-                  <p className="font-medium">
-                    {client?.alias ?? "客户已不在"} · {o.title}
-                  </p>
-                  <p className="font-serif text-xl tabular-nums">{o.amountYuan.toLocaleString("zh-CN")} 元</p>
+                  <p className="font-medium">{client?.alias ?? t("clientGone")} · {o.title}</p>
+                  <p className="font-serif text-xl tabular-nums">{yuan(o.amountYuan)}</p>
                 </div>
                 <p className="mt-1 text-sm text-muted">
-                  {o.product} · {o.billing}
-                  {project ? ` · ${project.name}` : ""} · {o.status}
+                  {show(o.product)} · {show(o.billing)}
+                  {project ? ` · ${project.name}` : ""} · {show(o.status)}
                 </p>
-                {o.blockReason ? <p className="mt-2 text-sm text-seal">{o.blockReason}</p> : null}
+                {o.blockReason ? <p className="mt-2 text-sm text-seal">{show(o.blockReason)}</p> : null}
                 <div className="mt-3 flex flex-wrap gap-2">
-                  {o.status === "草稿" ? (
-                    <Btn onClick={() => issuePlan(o.id)}>生成收款计划</Btn>
-                  ) : null}
+                  {o.status === "草稿" ? <Btn onClick={() => issuePlan(o.id)}>{t("issuePlan")}</Btn> : null}
                   {nextStatuses(o.status).map((st) => (
                     <Btn key={st} tone={st === "已取消" ? "paper" : "ink"} onClick={() => moveOrder(o.id, st)}>
-                      改为{st}
+                      {moveLabel(locale, show(st))}
                     </Btn>
                   ))}
                 </div>
@@ -150,15 +132,15 @@ function OrdersPage() {
                     {lines.map((line) => (
                       <li key={line.id} className="grid gap-2 border-t border-rule py-3 md:grid-cols-4 md:items-end">
                         <p className="text-sm">
-                          {line.label}
-                          <span className="mt-1 block text-muted">应收 {line.expectedYuan.toLocaleString("zh-CN")}</span>
+                          {show(line.label)}
+                          <span className="mt-1 block text-muted">{t("expected")} {yuan(line.expectedYuan)}</span>
                         </p>
-                        <p className="text-sm tabular-nums">已记 {line.receivedYuan.toLocaleString("zh-CN")}</p>
+                        <p className="text-sm tabular-nums">{t("received")} {yuan(line.receivedYuan)}</p>
                         <input
                           className={inputCls}
                           inputMode="numeric"
                           value={draftPay[line.id] ?? ""}
-                          placeholder="已收累计"
+                          placeholder={t("soFar")}
                           onChange={(e) => setDraftPay({ ...draftPay, [line.id]: e.target.value.replace(/[^\d]/g, "") })}
                         />
                         <Btn
@@ -169,7 +151,7 @@ function OrdersPage() {
                             recordReceipt(line.id, Number(raw));
                           }}
                         >
-                          登记已收
+                          {t("register")}
                         </Btn>
                       </li>
                     ))}
@@ -183,7 +165,7 @@ function OrdersPage() {
                           <span className={`inline-flex h-6 w-6 items-center justify-center border text-xs ${item.done ? "border-seal bg-seal text-seal-ink" : "border-rule"}`}>
                             {item.done ? "✓" : ""}
                           </span>
-                          {item.name}
+                          {show(item.name)}
                         </button>
                       </li>
                     ))}
@@ -194,7 +176,7 @@ function OrdersPage() {
           })
         )}
       </ul>
-      <p className="mt-4 text-xs text-muted">状态只允许按 {ORDER_STATUSES.join(" / ")} 的相邻步骤走，不能从草稿直接标已交付。</p>
+      <p className="mt-4 text-xs text-muted">{t("statusHint")}</p>
     </Frame>
   );
 }

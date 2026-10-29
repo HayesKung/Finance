@@ -1,7 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Btn, Field, Frame, Kicker, Note, inputCls } from "@/components/finpivot/frame";
-import { PRODUCTS, SOURCES, STAGES } from "@/lib/finpivot/copy";
+import { Btn, CanonSelect, Field, Frame, Kicker, Note, inputCls } from "@/components/finpivot/frame";
+import { OUTREACH_RESULTS, PRODUCTS, SOURCES, STAGES } from "@/lib/finpivot/copy";
+import { canon } from "@/lib/finpivot/glossary";
+import { useI18n } from "@/lib/finpivot/locale";
+import { leadCount } from "@/lib/finpivot/ui";
 import { useOs, type Lead, type Outreach, type Source, type Stage } from "@/lib/finpivot/store";
 
 export const Route = createFileRoute("/pipeline")({ component: PipelinePage });
@@ -23,7 +26,10 @@ const empty = {
   privateContact: "",
 };
 
+const SCENES = ["老关系", "转介绍", "内容来询"] as const;
+
 function PipelinePage() {
+  const { locale, t, show } = useI18n();
   const leads = useOs((s) => s.leads);
   const addLead = useOs((s) => s.addLead);
   const updateLead = useOs((s) => s.updateLead);
@@ -59,7 +65,7 @@ function PipelinePage() {
 
   const onPublic = (v: string) => {
     setForm({ ...form, publicChannel: v });
-    setWarn(/1[3-9]\d{9}/.test(v) ? "这像私人手机号。公开渠道只记官网、总机、公开邮箱。私人号放到下面，且须对方同意。" : "");
+    setWarn(/1[3-9]\d{9}/.test(v) ? t("phoneWarn") : "");
   };
 
   const submit = () => {
@@ -70,26 +76,28 @@ function PipelinePage() {
   };
 
   const exportCsv = () => {
-    const head = ["脱敏简称", "企业名", "行业", "方向", "出海市场", "公开联系渠道", "来源", "阶段", "产品", "下一步", "日期", "备注"];
+    const head = locale === "en"
+      ? ["Alias", "Public company", "Industry", "Direction", "Overseas market", "Public channel", "Source", "Stage", "Product", "Next", "Date", "Note"]
+      : ["脱敏简称", "企业名", "行业", "方向", "出海市场", "公开联系渠道", "来源", "阶段", "产品", "下一步", "日期", "备注"];
     const rows = leads.map((l) =>
-      [l.alias, l.company, l.industry, l.direction, l.market, l.publicChannel, l.source, l.stage, l.product, l.next, l.nextDate, l.note]
+      [l.alias, l.company, l.industry, l.direction, l.market, l.publicChannel, show(l.source), show(l.stage), show(l.product), l.next, l.nextDate, l.note]
         .map(csvCell)
         .join(","),
     );
-    download(`pipeline-${leads.length}.csv`, [head.join(","), ...rows].join("\n"));
+    download(`pipeline-${leads.length}.csv`, `\uFEFF${[head.join(","), ...rows].join("\n")}`);
   };
 
   const onImport = async (file: File) => {
-    const text = await file.text();
+    const text = (await file.text()).replace(/^\uFEFF/, "");
     const lines = text.split(/\r?\n/).filter((l) => l.trim());
     const body = lines.slice(1);
     const parsed: Omit<Lead, "id">[] = [];
     body.forEach((line) => {
       const c = splitCsv(line);
       if (!c[0] || !c[1]) return;
-      const source = SOURCES.includes(c[6] as Source) ? (c[6] as Source) : "公开信息";
-      const st = STAGES.includes(c[7] as Stage) ? (c[7] as Stage) : "线索";
-      const product = PRODUCTS.includes(c[8] as Lead["product"]) ? (c[8] as Lead["product"]) : "未定";
+      const source = SOURCES.includes(canon(c[6] ?? "") as Source) ? (canon(c[6] ?? "") as Source) : "公开信息";
+      const st = STAGES.includes(canon(c[7] ?? "") as Stage) ? (canon(c[7] ?? "") as Stage) : "线索";
+      const product = PRODUCTS.includes(canon(c[8] ?? "") as Lead["product"]) ? (canon(c[8] ?? "") as Lead["product"]) : "未定";
       parsed.push({
         alias: c[0],
         company: c[1],
@@ -112,58 +120,46 @@ function PipelinePage() {
 
   return (
     <Frame>
-      <Kicker n="05">一百家目标与约访</Kicker>
+      <Kicker n="05">{t("pipeKicker")}</Kicker>
       <Note>
-        来源只有三类：老关系、合作方推荐、公开信息。不买名单，不爬私人联系方式。企业名用公开名称，对外材料只用脱敏简称。当前 {leads.length} 家，空表不是编造的客户。
+        {t("pipeNote")} {leadCount(locale, leads.length)}
       </Note>
 
       <div className="mt-6 grid gap-3 md:grid-cols-3">
-        <Field label="脱敏简称">
+        <Field label={t("aliasLabel")}>
           <input className={inputCls} value={form.alias} onChange={(e) => setForm({ ...form, alias: e.target.value })} />
         </Field>
-        <Field label="公开企业名">
+        <Field label={t("company")}>
           <input className={inputCls} value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} />
         </Field>
-        <Field label="行业">
+        <Field label={t("industry")}>
           <input className={inputCls} value={form.industry} onChange={(e) => setForm({ ...form, industry: e.target.value })} />
         </Field>
-        <Field label="产品或工程方向">
+        <Field label={t("directionLong")}>
           <input className={inputCls} value={form.direction} onChange={(e) => setForm({ ...form, direction: e.target.value })} />
         </Field>
-        <Field label="出海市场">
+        <Field label={t("market")}>
           <input className={inputCls} value={form.market} onChange={(e) => setForm({ ...form, market: e.target.value })} />
         </Field>
-        <Field label="公开联系渠道">
+        <Field label={t("publicChannel")}>
           <input className={inputCls} value={form.publicChannel} onChange={(e) => onPublic(e.target.value)} />
         </Field>
-        <Field label="来源">
-          <select className={inputCls} value={form.source} onChange={(e) => setForm({ ...form, source: e.target.value as Source })}>
-            {SOURCES.map((s) => (
-              <option key={s}>{s}</option>
-            ))}
-          </select>
+        <Field label={t("source")}>
+          <CanonSelect value={form.source} options={SOURCES} onChange={(value) => setForm({ ...form, source: value as Source })} />
         </Field>
-        <Field label="阶段">
-          <select className={inputCls} value={form.stage} onChange={(e) => setForm({ ...form, stage: e.target.value as Stage })}>
-            {STAGES.map((s) => (
-              <option key={s}>{s}</option>
-            ))}
-          </select>
+        <Field label={t("stage")}>
+          <CanonSelect value={form.stage} options={STAGES} onChange={(value) => setForm({ ...form, stage: value as Stage })} />
         </Field>
-        <Field label="产品意向">
-          <select className={inputCls} value={form.product} onChange={(e) => setForm({ ...form, product: e.target.value as Lead["product"] })}>
-            {PRODUCTS.map((s) => (
-              <option key={s}>{s}</option>
-            ))}
-          </select>
+        <Field label={t("productIntent")}>
+          <CanonSelect value={form.product} options={PRODUCTS} onChange={(value) => setForm({ ...form, product: value as Lead["product"] })} />
         </Field>
-        <Field label="下一步">
+        <Field label={t("next")}>
           <input className={inputCls} value={form.next} onChange={(e) => setForm({ ...form, next: e.target.value })} />
         </Field>
-        <Field label="日期">
+        <Field label={t("date")}>
           <input className={inputCls} type="date" value={form.nextDate} onChange={(e) => setForm({ ...form, nextDate: e.target.value })} />
         </Field>
-        <Field label="备注">
+        <Field label={t("note")}>
           <input className={inputCls} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
         </Field>
       </div>
@@ -175,20 +171,20 @@ function PipelinePage() {
           checked={form.consentPrivate}
           onChange={(e) => setForm({ ...form, consentPrivate: e.target.checked, privateContact: e.target.checked ? form.privateContact : "" })}
         />
-        对方已同意交换私人电话或微信。未勾选时不保存私人联系方式，导出也不含这一栏。
+        {t("consent")}
       </label>
       {form.consentPrivate ? (
         <div className="mt-3 max-w-md">
-          <Field label="私人联系方式（仅本机）">
+          <Field label={t("privateLabel")}>
             <input className={inputCls} value={form.privateContact} onChange={(e) => setForm({ ...form, privateContact: e.target.value })} />
           </Field>
         </div>
       ) : null}
       <div className="mt-4 flex flex-wrap gap-2">
-        <Btn onClick={submit}>记入清单</Btn>
-        <Btn tone="paper" onClick={exportCsv}>导出公开字段</Btn>
+        <Btn onClick={submit}>{t("saveLead")}</Btn>
+        <Btn tone="paper" onClick={exportCsv}>{t("exportCsv")}</Btn>
         <label className="inline-flex h-11 cursor-pointer items-center border border-rule px-4 text-sm">
-          导入 CSV
+          {t("importCsv")}
           <input
             type="file"
             accept=".csv,text/csv"
@@ -203,22 +199,22 @@ function PipelinePage() {
       </div>
 
       <div className="mt-8 grid gap-3 md:grid-cols-2">
-        <Field label="搜索">
-          <input className={inputCls} value={q} onChange={(e) => setQ(e.target.value)} placeholder="简称、企业、市场" />
+        <Field label={t("search")}>
+          <input className={inputCls} value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("searchPh")} />
         </Field>
-        <Field label="阶段筛选">
-          <select className={inputCls} value={stage} onChange={(e) => setStage(e.target.value as Stage | "全部")}>
-            <option>全部</option>
-            {STAGES.map((s) => (
-              <option key={s}>{s}</option>
-            ))}
-          </select>
+        <Field label={t("stageFilter")}>
+          <CanonSelect
+            value={stage}
+            options={STAGES}
+            blank={{ value: "全部", label: show("全部") }}
+            onChange={(value) => setStage(value as Stage | "全部")}
+          />
         </Field>
       </div>
 
       <ul className="mt-4 border-t border-ink">
         {shown.length === 0 ? (
-          <li className="border-b border-rule py-6 text-sm text-muted">还没有线索。先从最熟的老关系里记公开信息，不要填示例公司充数。</li>
+          <li className="border-b border-rule py-6 text-sm text-muted">{t("emptyLeads")}</li>
         ) : (
           shown.map((l) => (
             <li key={l.id} className="grid gap-2 border-b border-rule py-4 md:grid-cols-12">
@@ -228,23 +224,16 @@ function PipelinePage() {
                 <p className="mt-1 text-sm">{l.industry} · {l.direction} · {l.market}</p>
               </div>
               <div className="text-sm leading-relaxed md:col-span-4">
-                <p>{l.source} · {l.product}</p>
-                <p className="text-muted">{l.publicChannel || "未记公开渠道"}</p>
-                <p>下一步：{l.next || "未写"} {l.nextDate}</p>
-                {l.consentPrivate ? <p className="text-seal">已同意交换私人联系方式，仅留在本机。</p> : null}
+                <p>{show(l.source)} · {show(l.product)}</p>
+                <p className="text-muted">{l.publicChannel || t("noChannel")}</p>
+                <p>{t("nextPrefix")}：{l.next || t("unwritten")} {l.nextDate}</p>
+                {l.consentPrivate ? <p className="text-seal">{t("privateKept")}</p> : null}
               </div>
               <div className="flex flex-wrap items-start gap-2 md:col-span-4">
-                <select className="h-11 border border-rule bg-paper px-2 text-sm" value={l.stage} onChange={(e) => updateLead(l.id, { stage: e.target.value as Stage })}>
-                  {STAGES.map((s) => (
-                    <option key={s}>{s}</option>
-                  ))}
-                </select>
-                <Btn tone="paper" onClick={() => removeLead(l.id)}>移除</Btn>
-                <Btn
-                  tone={clients.some((c) => c.leadId === l.id) ? "seal" : "paper"}
-                  onClick={() => promoteLead(l.id)}
-                >
-                  {clients.some((c) => c.leadId === l.id) ? "已建档" : "升为客户"}
+                <CanonSelect className="h-11 border border-rule bg-paper px-2 text-sm" value={l.stage} options={STAGES} onChange={(value) => updateLead(l.id, { stage: value as Stage })} />
+                <Btn tone="paper" onClick={() => removeLead(l.id)}>{t("remove")}</Btn>
+                <Btn tone={clients.some((c) => c.leadId === l.id) ? "seal" : "paper"} onClick={() => promoteLead(l.id)}>
+                  {clients.some((c) => c.leadId === l.id) ? t("promoted") : t("promote")}
                 </Btn>
               </div>
             </li>
@@ -253,35 +242,25 @@ function PipelinePage() {
       </ul>
 
       <section className="mt-12">
-        <Kicker n="06">约访执行记录</Kicker>
-        <p className="text-sm text-muted">未约到要写原因。不要把没发生的约访写成已约到。</p>
+        <Kicker n="06">{t("outKicker")}</Kicker>
+        <p className="text-sm text-muted">{t("outNote")}</p>
         <div className="mt-4 grid gap-3 md:grid-cols-3">
-          <Field label="脱敏简称">
+          <Field label={t("aliasLabel")}>
             <input className={inputCls} value={oform.alias} onChange={(e) => setOform({ ...oform, alias: e.target.value })} />
           </Field>
-          <Field label="场景">
-            <select className={inputCls} value={oform.scene} onChange={(e) => setOform({ ...oform, scene: e.target.value as Outreach["scene"] })}>
-              <option>老关系</option>
-              <option>转介绍</option>
-              <option>内容来询</option>
-            </select>
+          <Field label={t("scene")}>
+            <CanonSelect value={oform.scene} options={SCENES} onChange={(value) => setOform({ ...oform, scene: value as Outreach["scene"] })} />
           </Field>
-          <Field label="日期">
+          <Field label={t("date")}>
             <input className={inputCls} type="date" value={oform.date} onChange={(e) => setOform({ ...oform, date: e.target.value })} />
           </Field>
-          <Field label="结果">
-            <select className={inputCls} value={oform.result} onChange={(e) => setOform({ ...oform, result: e.target.value as Outreach["result"] })}>
-              <option>未回复</option>
-              <option>已约到</option>
-              <option>拒绝</option>
-              <option>改期</option>
-              <option>不合适</option>
-            </select>
+          <Field label={t("result")}>
+            <CanonSelect value={oform.result} options={OUTREACH_RESULTS} onChange={(value) => setOform({ ...oform, result: value as Outreach["result"] })} />
           </Field>
-          <Field label="原因或情况">
+          <Field label={t("reason")}>
             <input className={inputCls} value={oform.reason} onChange={(e) => setOform({ ...oform, reason: e.target.value })} />
           </Field>
-          <Field label="下一步">
+          <Field label={t("next")}>
             <input className={inputCls} value={oform.next} onChange={(e) => setOform({ ...oform, next: e.target.value })} />
           </Field>
         </div>
@@ -293,21 +272,21 @@ function PipelinePage() {
               setOform({ alias: "", scene: "老关系", date: "", result: "未回复", reason: "", next: "" });
             }}
           >
-            记下这次约访
+            {t("saveOut")}
           </Btn>
         </div>
         <ul className="mt-4 border-t border-ink">
           {outreach.length === 0 ? (
-            <li className="py-4 text-sm text-muted">还没有约访记录。目标是 20 家免费诊断的执行记录，不是 20 个成交。</li>
+            <li className="py-4 text-sm text-muted">{t("emptyOut")}</li>
           ) : (
             outreach.map((o) => (
               <li key={o.id} className="flex flex-col gap-1 border-b border-rule py-3 text-sm md:flex-row md:items-center md:justify-between">
                 <p>
                   <span className="font-medium">{o.alias}</span>
-                  <span className="text-muted"> · {o.scene} · {o.date || "未写日期"} · {o.result}</span>
+                  <span className="text-muted"> · {show(o.scene)} · {o.date || t("noDate")} · {show(o.result)}</span>
                 </p>
                 <p className="text-muted">{o.reason} {o.next}</p>
-                <Btn tone="paper" onClick={() => removeOutreach(o.id)}>移除</Btn>
+                <Btn tone="paper" onClick={() => removeOutreach(o.id)}>{t("remove")}</Btn>
               </li>
             ))
           )}

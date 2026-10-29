@@ -2,33 +2,39 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { Btn, Frame, Kicker, Note, areaCls } from "@/components/finpivot/frame";
 import { templateSeeds } from "@/lib/finpivot/copy";
+import { templateSeeds as enSeeds } from "@/lib/finpivot/en-content";
+import { activeBody } from "@/lib/finpivot/glossary";
+import { useI18n } from "@/lib/finpivot/locale";
 import { useOs } from "@/lib/finpivot/store";
 
 export const Route = createFileRoute("/templates")({ component: TemplatesPage });
 
 function TemplatesPage() {
+  const { locale, t, copy } = useI18n();
   const templates = useOs((s) => s.templates);
   const setTemplate = useOs((s) => s.setTemplate);
   const [id, setId] = useState(templateSeeds[0].id);
   const [copied, setCopied] = useState(false);
-  const meta = templateSeeds.find((t) => t.id === id) ?? templateSeeds[0];
-  const body = templates[meta.id] ?? meta.body;
+  const meta = copy.templateSeeds.find((item) => item.id === id) ?? copy.templateSeeds[0];
+  const zhBody = templateSeeds.find((item) => item.id === meta.id)?.body ?? "";
+  const enBody = enSeeds.find((item) => item.id === meta.id)?.body ?? zhBody;
+  const body = activeBody(locale, templates[meta.id], zhBody, enBody);
 
   return (
     <Frame>
-      <Kicker n="08">七张可改模板</Kicker>
-      <Note>前四张对应方案里的准备期模板。后三张是任务要求的补充：月度财务包、合同要点、复盘案例。合同要点不是法律文本。</Note>
+      <Kicker n="08">{t("tplKicker")}</Kicker>
+      <Note>{t("tplNote")}</Note>
       <div className="mt-4 flex gap-2 overflow-x-auto pb-2">
-        {templateSeeds.map((t) => (
+        {copy.templateSeeds.map((item) => (
           <button
-            key={t.id}
+            key={item.id}
             type="button"
-            onClick={() => setId(t.id)}
+            onClick={() => setId(item.id)}
             className={`inline-flex h-11 shrink-0 items-center border px-3 text-sm ${
-              t.id === meta.id ? "border-ink bg-ink text-paper" : "border-rule"
+              item.id === meta.id ? "border-ink bg-ink text-paper" : "border-rule"
             }`}
           >
-            {t.name}
+            {item.name}
           </button>
         ))}
       </div>
@@ -43,7 +49,7 @@ function TemplatesPage() {
             });
           }}
         >
-          {copied ? "已复制" : "复制"}
+          {copied ? t("copied") : t("copy")}
         </Btn>
         <Btn
           tone="paper"
@@ -57,10 +63,10 @@ function TemplatesPage() {
             URL.revokeObjectURL(url);
           }}
         >
-          下载
+          {t("download")}
         </Btn>
-        <Btn tone="paper" onClick={() => setTemplate(meta.id, meta.body)}>
-          恢复底稿
+        <Btn tone="paper" onClick={() => setTemplate(meta.id, locale === "en" ? enBody : zhBody)}>
+          {t("resetSeed")}
         </Btn>
       </div>
     </Frame>
