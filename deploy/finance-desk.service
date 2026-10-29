@@ -11,6 +11,16 @@
 #   useradd -r -s /usr/sbin/nologin -d /opt/finance-finpivot finance
 #   cp deploy/finance-desk.service /etc/systemd/system/
 #   systemctl daemon-reload && systemctl enable --now finance-desk
+#
+# 数据库（合同 / 签名 / 支付通道密钥持久化，src/lib/db.ts 使用）：
+#   先建库与账号，并执行 migrations/0002_fin_contract.sql，例如：
+#     create role finpivot login password '<随机口令>';
+#     create database finpivot owner finpivot;
+#     psql -h 127.0.0.1 -p <端口> -U finpivot -d finpivot -f migrations/0002_fin_contract.sql
+#   再把连接串写入仅 root 可读的文件（不要把凭据提交进仓库）：
+#     printf 'DATABASE_URL=postgresql://finpivot:<口令>@127.0.0.1:<端口>/finpivot\n' \
+#       > /etc/finance-desk.env && chmod 600 /etc/finance-desk.env
+#   未设置 DATABASE_URL 时，合同读写会在调用时抛错（懒初始化，不影响启动）。
 
 [Unit]
 Description=Finance MM-FINPIVOT desk (TanStack Start SSR, loopback only)
@@ -23,6 +33,7 @@ Group=finance
 WorkingDirectory=/opt/finance-finpivot
 Environment=NODE_ENV=production
 Environment=PORT=4173
+EnvironmentFile=/etc/finance-desk.env
 ExecStart=/usr/bin/node /opt/finance-finpivot/listen.mjs
 Restart=always
 RestartSec=5
