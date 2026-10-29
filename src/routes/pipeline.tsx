@@ -5,6 +5,8 @@ import { OUTREACH_RESULTS, PRODUCTS, SOURCES, STAGES } from "@/lib/finpivot/copy
 import { canon } from "@/lib/finpivot/glossary";
 import { useI18n } from "@/lib/finpivot/locale";
 import { leadCount } from "@/lib/finpivot/ui";
+import { BILLINGS, type Billing } from "@/lib/finpivot/flow";
+import { needToProduct } from "@/lib/finpivot/inquiry";
 import { useOs, type Lead, type Outreach, type Source, type Stage } from "@/lib/finpivot/store";
 
 export const Route = createFileRoute("/pipeline")({ component: PipelinePage });
@@ -34,6 +36,12 @@ function PipelinePage() {
   const inquiries = useOs((s) => s.inquiries ?? []);
   const acceptInquiry = useOs((s) => s.acceptInquiry);
   const declineInquiry = useOs((s) => s.declineInquiry);
+  const agreements = useOs((s) => s.agreements ?? []);
+  const quoteInquiry = useOs((s) => s.quoteInquiry);
+  const [quoteFor, setQuoteFor] = useState("");
+  const [fee, setFee] = useState("");
+  const [matter, setMatter] = useState("");
+  const [bill, setBill] = useState<Billing>("按单");
   const addLead = useOs((s) => s.addLead);
   const updateLead = useOs((s) => s.updateLead);
   const removeLead = useOs((s) => s.removeLead);
@@ -128,7 +136,9 @@ function PipelinePage() {
         <Note>{t("inqEmpty")}</Note>
       ) : (
         <ul className="border-t border-ink">
-          {inquiries.map((item) => (
+          {inquiries.map((item) => {
+            const sheet = agreements.find((a) => a.inquiryId === item.id);
+            return (
             <li key={item.id} className="grid gap-3 border-b border-rule py-4 md:grid-cols-12 md:items-center">
               <div className="md:col-span-8">
                 <p className="font-serif text-xl">{item.ref}</p>
@@ -139,6 +149,7 @@ function PipelinePage() {
                   {show(item.status)} · {item.createdAt.slice(0, 10)} · {item.contact}
                 </p>
                 {item.note ? <p className="mt-1 text-sm leading-relaxed text-muted">{item.note}</p> : null}
+                {sheet ? <p className="mt-2 text-sm">{sheet.ref}</p> : null}
               </div>
               {item.status === "待处理" ? (
                 <div className="flex flex-col gap-2 md:col-span-4 md:items-end">
@@ -146,8 +157,62 @@ function PipelinePage() {
                   <Btn tone="paper" onClick={() => declineInquiry(item.id)}>{t("inqDecline")}</Btn>
                 </div>
               ) : null}
+              {item.status === "已转入名单" && !sheet ? (
+                <div className="grid gap-2 md:col-span-12">
+                  {quoteFor === item.id ? (
+                    <>
+                      <div className="grid gap-2 md:grid-cols-3">
+                        <Field label={t("quoteTitle")}>
+                          <input className={inputCls} value={matter} onChange={(e) => setMatter(e.target.value)} />
+                        </Field>
+                        <Field label={t("billing")}>
+                          <CanonSelect value={bill} options={BILLINGS} onChange={(value) => setBill(value as Billing)} />
+                        </Field>
+                        <Field label={t("quoteFee")}>
+                          <input className={inputCls} inputMode="numeric" value={fee} onChange={(e) => setFee(e.target.value.replace(/[^\d]/g, ""))} />
+                        </Field>
+                      </div>
+                      <div>
+                        <Btn
+                          onClick={() => {
+                            const amountYuan = Number(fee);
+                            if (!matter.trim() || !amountYuan) return;
+                            quoteInquiry(item.id, {
+                              product: needToProduct(item.need),
+                              billing: bill,
+                              title: matter.trim(),
+                              amountYuan,
+                            });
+                          }}
+                        >
+                          {t("quoteIssue")}
+                        </Btn>
+                      </div>
+                    </>
+                  ) : (
+                    <div>
+                      <Btn
+                        onClick={() => {
+                          setQuoteFor(item.id);
+                          setMatter(item.company);
+                        }}
+                      >
+                        {t("quoteOpen")}
+                      </Btn>
+                    </div>
+                  )}
+                </div>
+              ) : null}
+              {sheet ? (
+                <div className="md:col-span-4 md:text-right">
+                  <a className="inline-flex h-11 items-center text-sm underline decoration-rule underline-offset-4" href={`/sign?ref=${encodeURIComponent(sheet.ref)}`}>
+                    {t("openSign")}
+                  </a>
+                </div>
+              ) : null}
             </li>
-          ))}
+            );
+          })}
         </ul>
       )}
 

@@ -15,6 +15,7 @@ import {
   makeInquiryRef,
   type Inquiry,
 } from "@/lib/finpivot/inquiry";
+import { makeAgreementRef, type Agreement } from "@/lib/finpivot/agreement";
 import {
   buildPlan,
   deliverableNames,
@@ -164,6 +165,14 @@ type OsState = {
   ) => Inquiry;
   acceptInquiry: (id: string) => void;
   declineInquiry: (id: string) => void;
+  agreements: Agreement[];
+  quoteInquiry: (
+    inquiryId: string,
+    row: { product: Product; billing: Billing; title: string; amountYuan: number },
+  ) => string;
+  setPayee: (id: string, patch: Partial<Pick<Agreement, "payeeName" | "payeeBank" | "payeeAccount">>) => void;
+  signAgreement: (ref: string, name: string) => boolean;
+  claimPrepaid: (ref: string) => boolean;
   addLead: (lead: Omit<Lead, "id">) => void;
   updateLead: (id: string, patch: Partial<Lead>) => void;
   removeLead: (id: string) => void;
@@ -306,6 +315,126 @@ export const useOs = create<OsState>()(
             item.id === id && item.status === "待处理" ? { ...item, status: "不跟进" } : item,
           ),
         })),
+      agreements: [],
+      quoteInquiry: (inquiryId, row) => {
+        let created = "";
+        set((s) => {
+          const existing = (s.agreements ?? []).find((a) => a.inquiryId === inquiryId);
+          if (existing) {
+            created = existing.ref;
+            return s;
+          }
+          const inq = (s.inquiries ?? []).find((item) => item.id === inquiryId);
+          if (!inq || inq.status !== "已转入名单" || !inq.leadId) return s;
+          const lead = s.leads.find((item) => item.id === inq.leadId);
+          if (!lead || !row.title.trim() || row.amountYuan <= 0 || row.product === "未定") return s;
+          const found = s.clients.find((item) => item.leadId === lead.id);
+          const clientId = found?.id ?? uid();
+          const clients = found
+            ? s.clients.map((item) =>
+                item.id === clientId && item.status === "潜在" ? { ...item, status: "方案中" as const } : item,
+              )
+            : [
+                {
+                  id: clientId,
+                  leadId: lead.id,
+                  alias: lead.alias,
+                  company: lead.company,
+                  industry: lead.industry,
+                  direction: lead.direction,
+                  market: lead.market,
+                  source: lead.source,
+                  publicChannel: lead.publicChannel,
+                  consentPrivate: lead.consentPrivate,
+                  privateContact: lead.privateContact,
+                  status: "方案中" as const,
+                  note: lead.note,
+                },
+                ...s.clients,
+              ];
+          const orderId = uid();
+          const amountYuan = Math.round(row.amountYuan);
+          const payments = buildPlan(row.billing, amountYuan).map((line) => ({ ...line, id: uid(), orderId }));
+          const deliverables = deliverableNames(row.product).map((name) => ({
+            id: uid(),
+            orderId,
+            name,
+            done: false,
+          }));
+          const id = uid();
+          const ref = makeAgreementRef(new Date().toISOString().slice(0, 10).replace(/-/g, ""), id);
+          created = ref;
+          const agreement: Agreement = {
+            id,
+            ref,
+            inquiryId,
+            leadId: lead.id,
+            clientId,
+            orderId,
+            payeeName: "",
+            payeeBank: "",
+            payeeAccount: "",
+            signedName: "",
+            signedAt: "",
+            claimedAt: "",
+          };
+          return {
+            clients,
+            orders: [
+              {
+                id: orderId,
+                clientId,
+                projectId: "",
+                product: row.product,
+                billing: row.billing,
+                title: row.title.trim(),
+                amountYuan,
+                status: "待收款",
+                blockReason: "",
+              },
+              ...s.orders,
+            ],
+            payments: [...payments, ...s.payments],
+            deliverables: [...deliverables, ...s.deliverables],
+            agreements: [agreement, ...(s.agreements ?? [])],
+          };
+        });
+        return created;
+      },
+      setPayee: (id, patch) =>
+        set((s) => ({
+          agreements: (s.agreements ?? []).map((item) => (item.id === id ? { ...item, ...patch } : item)),
+        })),
+      signAgreement: (ref, name) => {
+        const signedName = name.trim();
+        if (!signedName) return false;
+        let ok = false;
+        set((s) => {
+          const sheet = (s.agreements ?? []).find((item) => item.ref === ref);
+          if (!sheet || sheet.signedAt) return s;
+          ok = true;
+          return {
+            agreements: s.agreements.map((item) =>
+              item.ref === ref ? { ...item, signedName, signedAt: new Date().toISOString() } : item,
+            ),
+          };
+        });
+        return ok;
+      },
+      claimPrepaid: (ref) => {
+        let ok = false;
+        set((s) => {
+          const sheet = (s.agreements ?? []).find((item) => item.ref === ref);
+          if (!sheet || !sheet.signedAt || !sheet.payeeAccount.trim() || sheet.claimedAt) return s;
+          ok = true;
+          return {
+            agreements: s.agreements.map((item) =>
+              item.ref === ref ? { ...item, claimedAt: new Date().toISOString() } : item,
+            ),
+          };
+        });
+        return ok;
+      },
       addLead: (lead) => set((s) => ({ leads: [{ ...lead, id: uid() }, ...s.leads] })),
       updateLead: (id, patch) =>
         set((s) => ({

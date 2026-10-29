@@ -138,34 +138,19 @@ function Home() {
       </section>
 
       <section className="mt-14">
-        <Kicker n="08">{t("splitKicker")}</Kicker>
-        <div className="grid border border-ink md:grid-cols-2">
-          <div className="border-b border-ink p-4 md:border-r md:border-b-0">
-            <p className="font-serif text-xl">{t("splitPublic")}</p>
-          </div>
-          <div className="bg-paper-2 p-4">
-            <p className="font-serif text-xl">{t("splitDesk")}</p>
-          </div>
-          {(
-            [
-              ["splitWho", "splitWhoP", "splitWhoD"],
-              ["splitDo", "splitDoP", "splitDoD"],
-              ["splitHide", "splitHideP", "splitHideD"],
-              ["splitData", "splitDataP", "splitDataD"],
-              ["splitDoor", "splitDoorP", "splitDoorD"],
-            ] as const
-          ).map(([label, pub, desk]) => (
-            <div key={label} className="contents">
-              <div className="border-t border-rule p-4">
-                <p className="text-xs text-muted">{t(label)}</p>
-                <p className="mt-1 text-sm leading-relaxed">{t(pub)}</p>
-              </div>
-              <div className="border-t border-rule bg-paper-2 p-4">
-                <p className="text-xs text-muted">{t(label)}</p>
-                <p className="mt-1 text-sm leading-relaxed">{t(desk)}</p>
-              </div>
-            </div>
+        <Kicker n="08">{t("loopKicker")}</Kicker>
+        <ol className="grid gap-3 md:grid-cols-3">
+          {[t("loop1"), t("loop2"), t("loop3")].map((step, i) => (
+            <li key={step} className="border border-rule bg-paper-2 p-4">
+              <span className="font-serif text-2xl text-seal">{i + 1}</span>
+              <p className="mt-2 text-sm leading-relaxed">{step}</p>
+            </li>
           ))}
+        </ol>
+        <div className="mt-4">
+          <Link to="/sign" className="inline-flex h-11 items-center border border-ink px-4 text-sm">
+            {t("navSign")}
+          </Link>
         </div>
       </section>
 

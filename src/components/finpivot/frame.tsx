@@ -10,6 +10,7 @@ const browse = [
   { to: "/", label: "navHome", hash: "" },
   { to: "/", label: "navOffer", hash: "sheet" },
   { to: "/ask", label: "navAsk", hash: "" },
+  { to: "/sign", label: "navSign", hash: "" },
 ] as const;
 
 const desk = [
@@ -21,7 +22,7 @@ const desk = [
   { to: "/templates", label: "navTemplates" },
 ] as const;
 
-const PUBLIC = new Set(["/", "/ask"]);
+const PUBLIC = new Set(["/", "/ask", "/sign"]);
 
 function useRobots(indexable: boolean) {
   useEffect(() => {
@@ -92,7 +93,8 @@ function PublicShell({ path, hash, children }: { path: string; hash: string; chi
           </div>
           <nav className="flex gap-2 overflow-x-auto pb-1">
             {browse.map((l) => {
-              const on = l.to === "/ask" ? path === "/ask" : path === "/" && (l.hash ? hash === l.hash : hash === "");
+              const on =
+                l.to === "/ask" ? path === "/ask" : l.to === "/sign" ? path === "/sign" : path === "/" && (l.hash ? hash === l.hash : hash === "");
               return (
                 <Link
                   key={l.label}

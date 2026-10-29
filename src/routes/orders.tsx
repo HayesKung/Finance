@@ -5,6 +5,7 @@ import { PRODUCTS } from "@/lib/finpivot/copy";
 import { BILLINGS, nextStatuses } from "@/lib/finpivot/flow";
 import { useI18n } from "@/lib/finpivot/locale";
 import { moveLabel, openOrdersLine } from "@/lib/finpivot/ui";
+import { agreementPhase } from "@/lib/finpivot/agreement";
 import { useOs, type Order, type Product } from "@/lib/finpivot/store";
 
 export const Route = createFileRoute("/orders")({ component: OrdersPage });
@@ -21,6 +22,8 @@ function OrdersPage() {
   const moveOrder = useOs((s) => s.moveOrder);
   const recordReceipt = useOs((s) => s.recordReceipt);
   const toggleDeliverable = useOs((s) => s.toggleDeliverable);
+  const agreements = useOs((s) => s.agreements ?? []);
+  const setPayee = useOs((s) => s.setPayee);
   const [clientId, setClientId] = useState("");
   const [projectId, setProjectId] = useState("");
   const [product, setProduct] = useState<Product>("出口财务包");
@@ -109,6 +112,9 @@ function OrdersPage() {
             const project = projects.find((p) => p.id === o.projectId);
             const lines = payments.filter((p) => p.orderId === o.id);
             const items = deliverables.filter((d) => d.orderId === o.id);
+            const sheet = agreements.find((a) => a.orderId === o.id);
+            const due = lines[0];
+            const prepaid = !!due && due.expectedYuan > 0 && due.receivedYuan >= due.expectedYuan;
             return (
               <li key={o.id} className="border-b border-rule py-5">
                 <div className="flex flex-col gap-1 md:flex-row md:items-baseline md:justify-between">
@@ -120,6 +126,26 @@ function OrdersPage() {
                   {project ? ` · ${project.name}` : ""} · {show(o.status)}
                 </p>
                 {o.blockReason ? <p className="mt-2 text-sm text-seal">{show(o.blockReason)}</p> : null}
+                {sheet ? (
+                  <div className="mt-3 border border-rule p-3">
+                    <p className="text-sm">{sheet.ref} · {show(agreementPhase(sheet, prepaid))}</p>
+                    {sheet.signedName ? <p className="mt-1 text-sm text-muted">{t("signSigned")} · {sheet.signedName}</p> : null}
+                    <a className="mt-2 inline-flex h-11 items-center text-sm underline decoration-rule underline-offset-4" href={`/sign?ref=${encodeURIComponent(sheet.ref)}`}>
+                      {t("openSign")}
+                    </a>
+                    <div className="mt-3 grid gap-2 md:grid-cols-3">
+                      <Field label={t("payeeName")}>
+                        <input className={inputCls} value={sheet.payeeName} onChange={(e) => setPayee(sheet.id, { payeeName: e.target.value })} />
+                      </Field>
+                      <Field label={t("payeeBank")}>
+                        <input className={inputCls} value={sheet.payeeBank} onChange={(e) => setPayee(sheet.id, { payeeBank: e.target.value })} />
+                      </Field>
+                      <Field label={t("payeeAccount")}>
+                        <input className={inputCls} value={sheet.payeeAccount} onChange={(e) => setPayee(sheet.id, { payeeAccount: e.target.value })} />
+                      </Field>
+                    </div>
+                  </div>
+                ) : null}
                 <div className="mt-3 flex flex-wrap gap-2">
                   {o.status === "草稿" ? <Btn onClick={() => issuePlan(o.id)}>{t("issuePlan")}</Btn> : null}
                   {nextStatuses(o.status).map((st) => (

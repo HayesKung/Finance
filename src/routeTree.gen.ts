@@ -17,6 +17,7 @@ import { Route as OrdersRouteImport } from './routes/orders'
 import { Route as OsRouteImport } from './routes/os'
 import { Route as PipelineRouteImport } from './routes/pipeline'
 import { Route as PlaybookRouteImport } from './routes/playbook'
+import { Route as SignRouteImport } from './routes/sign'
 import { Route as TemplatesRouteImport } from './routes/templates'
 
 const IndexRoute = IndexRouteImport.update({
@@ -59,6 +60,11 @@ const PlaybookRoute = PlaybookRouteImport.update({
   path: '/playbook',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SignRoute = SignRouteImport.update({
+  id: '/sign',
+  path: '/sign',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TemplatesRoute = TemplatesRouteImport.update({
   id: '/templates',
   path: '/templates',
@@ -74,6 +80,7 @@ export interface FileRoutesByFullPath {
   '/os': typeof OsRoute
   '/pipeline': typeof PipelineRoute
   '/playbook': typeof PlaybookRoute
+  '/sign': typeof SignRoute
   '/templates': typeof TemplatesRoute
 }
 export interface FileRoutesByTo {
@@ -85,6 +92,7 @@ export interface FileRoutesByTo {
   '/os': typeof OsRoute
   '/pipeline': typeof PipelineRoute
   '/playbook': typeof PlaybookRoute
+  '/sign': typeof SignRoute
   '/templates': typeof TemplatesRoute
 }
 export interface FileRoutesById {
@@ -97,6 +105,7 @@ export interface FileRoutesById {
   '/os': typeof OsRoute
   '/pipeline': typeof PipelineRoute
   '/playbook': typeof PlaybookRoute
+  '/sign': typeof SignRoute
   '/templates': typeof TemplatesRoute
 }
 export interface FileRouteTypes {
@@ -110,6 +119,7 @@ export interface FileRouteTypes {
     | '/os'
     | '/pipeline'
     | '/playbook'
+    | '/sign'
     | '/templates'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -121,6 +131,7 @@ export interface FileRouteTypes {
     | '/os'
     | '/pipeline'
     | '/playbook'
+    | '/sign'
     | '/templates'
   id:
     | '__root__'
@@ -132,6 +143,7 @@ export interface FileRouteTypes {
     | '/os'
     | '/pipeline'
     | '/playbook'
+    | '/sign'
     | '/templates'
   fileRoutesById: FileRoutesById
 }
@@ -144,6 +156,7 @@ export interface RootRouteChildren {
   OsRoute: typeof OsRoute
   PipelineRoute: typeof PipelineRoute
   PlaybookRoute: typeof PlaybookRoute
+  SignRoute: typeof SignRoute
   TemplatesRoute: typeof TemplatesRoute
 }
 
@@ -205,6 +218,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PlaybookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/sign': {
+      id: '/sign'
+      path: '/sign'
+      fullPath: '/sign'
+      preLoaderRoute: typeof SignRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/templates': {
       id: '/templates'
       path: '/templates'
@@ -224,6 +244,7 @@ const rootRouteChildren: RootRouteChildren = {
   OsRoute: OsRoute,
   PipelineRoute: PipelineRoute,
   PlaybookRoute: PlaybookRoute,
+  SignRoute: SignRoute,
   TemplatesRoute: TemplatesRoute,
 }
 export const routeTree = rootRouteImport

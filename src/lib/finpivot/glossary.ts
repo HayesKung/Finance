@@ -140,6 +140,10 @@ const EN: Record<string, string> = {
   待处理: "Waiting",
   已转入名单: "Moved to the lead list",
   不跟进: "Not followed up",
+  待客户确认: "Waiting for the customer",
+  待转账: "Waiting for the transfer",
+  待核对到账: "Transfer claimed, not checked",
+  预收已核对: "Prepayment checked",
 };
 
 const ZH = new Map(Object.entries(EN).map(([zh, en]) => [en.toLowerCase(), zh]));
