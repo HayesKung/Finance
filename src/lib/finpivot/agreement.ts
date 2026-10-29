@@ -13,8 +13,10 @@ export type Agreement = {
   payeeAccount: string;
   signedName: string;
   signedAt: string;
+  signedImage: string;
   firmSigner: string;
   firmSignedAt: string;
+  firmSignImage: string;
   claimedMethod: "" | PayMethod;
   claimedAt: string;
 };
@@ -60,6 +62,10 @@ export function methodDetail(
   if (method === "微信") return firm.wechatId?.trim() ?? "";
   if (method === "支付宝") return firm.alipayAccount?.trim() ?? "";
   return [firm.payeeName, firm.payeeBank, firm.payeeAccount].filter((part) => part?.trim()).join(" / ");
+}
+
+export function signatureOk(dataUrl: string) {
+  return dataUrl.startsWith("data:image/png;base64,") && dataUrl.length > 80 && dataUrl.length < 120_000;
 }
 
 export function bothSigned(sheet: { signedAt?: string; firmSignedAt?: string }) {

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { agreementPhase, bothSigned, contractBody, makeAgreementRef, methodReady } from "./agreement.ts";
+import { agreementPhase, bothSigned, contractBody, makeAgreementRef, methodReady, signatureOk } from "./agreement.ts";
 
 describe("service confirmation", () => {
   it("builds a reference the customer can read back", () => {
@@ -65,5 +65,7 @@ describe("service confirmation", () => {
     });
     assert.match(text, /微信：wx-desk/);
     assert.doesNotMatch(text, /支付宝：/);
+    assert.equal(signatureOk("data:image/png;base64," + "a".repeat(40)), false);
+    assert.equal(signatureOk("data:image/png;base64," + "a".repeat(90)), true);
   });
 });

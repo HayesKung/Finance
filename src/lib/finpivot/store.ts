@@ -15,7 +15,7 @@ import {
   makeInquiryRef,
   type Inquiry,
 } from "@/lib/finpivot/inquiry";
-import { makeAgreementRef, methodReady, type Agreement, type PayMethod } from "@/lib/finpivot/agreement";
+import { makeAgreementRef, methodReady, signatureOk, type Agreement, type PayMethod } from "@/lib/finpivot/agreement";
 
 export type Firm = {
   legalName: string;
@@ -194,8 +194,8 @@ type OsState = {
     row: { product: Product; billing: Billing; title: string; amountYuan: number },
   ) => string;
   setPayee: (id: string, patch: Partial<Pick<Agreement, "payeeName" | "payeeBank" | "payeeAccount">>) => void;
-  signAgreement: (ref: string, name: string) => boolean;
-  countersign: (ref: string) => boolean;
+  signAgreement: (ref: string, name: string, image: string) => boolean;
+  countersign: (ref: string, image: string) => boolean;
   claimPrepaid: (ref: string, method: PayMethod) => boolean;
   addLead: (lead: Omit<Lead, "id">) => void;
   updateLead: (id: string, patch: Partial<Lead>) => void;
@@ -407,8 +407,10 @@ export const useOs = create<OsState>()(
             payeeAccount: "",
             signedName: "",
             signedAt: "",
+            signedImage: "",
             firmSigner: "",
             firmSignedAt: "",
+            firmSignImage: "",
             claimedMethod: "",
             claimedAt: "",
           };
@@ -439,9 +441,9 @@ export const useOs = create<OsState>()(
         set((s) => ({
           agreements: (s.agreements ?? []).map((item) => (item.id === id ? { ...item, ...patch } : item)),
         })),
-      signAgreement: (ref, name) => {
+      signAgreement: (ref, name, image) => {
         const signedName = name.trim();
-        if (!signedName) return false;
+        if (!signedName || !signatureOk(image)) return false;
         let ok = false;
         set((s) => {
           const sheet = (s.agreements ?? []).find((item) => item.ref === ref);
@@ -449,13 +451,14 @@ export const useOs = create<OsState>()(
           ok = true;
           return {
             agreements: s.agreements.map((item) =>
-              item.ref === ref ? { ...item, signedName, signedAt: new Date().toISOString() } : item,
+              item.ref === ref ? { ...item, signedName, signedImage: image, signedAt: new Date().toISOString() } : item,
             ),
           };
         });
         return ok;
       },
-      countersign: (ref) => {
+      countersign: (ref, image) => {
+        if (!signatureOk(image)) return false;
         let ok = false;
         set((s) => {
           const signer = (s.firm ?? emptyFirm).signerName.trim();
@@ -464,7 +467,9 @@ export const useOs = create<OsState>()(
           ok = true;
           return {
             agreements: s.agreements.map((item) =>
-              item.ref === ref ? { ...item, firmSigner: signer, firmSignedAt: new Date().toISOString() } : item,
+              item.ref === ref
+                ? { ...item, firmSigner: signer, firmSignImage: image, firmSignedAt: new Date().toISOString() }
+                : item,
             ),
           };
         });

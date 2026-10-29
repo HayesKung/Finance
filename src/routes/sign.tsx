@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Btn, Field, Frame, Kicker, Note, inputCls } from "@/components/finpivot/frame";
+import { SignPad } from "@/components/finpivot/sign-pad";
 import { PAY_METHODS, agreementPhase, bothSigned, contractBody, methodDetail, methodReady, type PayMethod } from "@/lib/finpivot/agreement";
 import { useI18n } from "@/lib/finpivot/locale";
 import { useOs } from "@/lib/finpivot/store";
@@ -23,6 +24,8 @@ function SignPage() {
   const [miss, setMiss] = useState(false);
   const [copied, setCopied] = useState(false);
   const [method, setMethod] = useState<PayMethod | "">("");
+  const [ink, setInk] = useState("");
+  const [inkMiss, setInkMiss] = useState(false);
 
   useEffect(() => {
     const fromUrl = new URLSearchParams(window.location.search).get("ref");
@@ -68,13 +71,15 @@ function SignPage() {
 
   return (
     <Frame>
+      <style>{`@media print { header, footer, .no-print { display: none !important } }`}</style>
       <Kicker n="01">{t("signKicker")}</Kicker>
       <p className="max-w-xl text-lg leading-relaxed">{t("signLede")}</p>
-      <div className="mt-4 max-w-xl">
+      <div className="no-print mt-4 max-w-xl">
         <Note>{t("signSameBrowser")}</Note>
+        <p className="mt-3 text-sm leading-relaxed text-muted">{t("signOnline")}</p>
       </div>
       <form
-        className="mt-6 flex max-w-xl flex-col gap-3 sm:flex-row sm:items-end"
+        className="no-print mt-6 flex max-w-xl flex-col gap-3 sm:flex-row sm:items-end"
         onSubmit={(e) => {
           e.preventDefault();
           setMiss(!agreements.some((item) => item.ref === ref.trim()));
@@ -97,7 +102,7 @@ function SignPage() {
           <p className="mt-1 text-sm text-muted">{show(due.label)} · {t("fee")} {yuan(order.amountYuan)}</p>
           <p className="mt-4 text-sm text-muted">{t("signScope")}</p>
           <pre className="mt-2 whitespace-pre-wrap border border-rule bg-paper-2 p-4 text-sm leading-relaxed">{text}</pre>
-          <div className="mt-3">
+          <div className="no-print mt-3 flex flex-wrap gap-2">
             <Btn
               tone="paper"
               onClick={() => {
@@ -108,6 +113,7 @@ function SignPage() {
             >
               {copied ? t("signCopied") : t("signCopy")}
             </Btn>
+            <Btn tone="paper" onClick={() => window.print()}>{t("signPrint")}</Btn>
           </div>
           <ul className="mt-3 list-disc pl-5 text-sm leading-relaxed">
             {items.map((item) => (
@@ -116,8 +122,16 @@ function SignPage() {
           </ul>
           {sheet.signedAt ? (
             <div className="mt-4 border-t border-rule pt-4">
-              <p className="text-sm">{t("signSigned")} · {sheet.signedName}</p>
-              {sheet.firmSignedAt ? <p className="mt-1 text-sm">{t("countersign")} · {sheet.firmSigner}</p> : <p className="mt-2 text-sm text-seal">{t("signWaitFirm")}</p>}
+              <p className="text-sm">{t("signPartyA")} · {t("signSigned")} · {sheet.signedName}</p>
+              {sheet.signedImage ? <img src={sheet.signedImage} alt={sheet.signedName} className="mt-2 h-24 border border-rule bg-paper" /> : null}
+              {sheet.firmSignedAt ? (
+                <div className="mt-3">
+                  <p className="text-sm">{t("signPartyB")} · {t("countersign")} · {sheet.firmSigner}</p>
+                  {sheet.firmSignImage ? <img src={sheet.firmSignImage} alt={sheet.firmSigner} className="mt-2 h-24 border border-rule bg-paper" /> : null}
+                </div>
+              ) : (
+                <p className="mt-2 text-sm text-seal">{t("signWaitFirm")}</p>
+              )}
               {ready && !anyReady ? <p className="mt-2 text-sm text-seal">{t("signPayeeMissing")}</p> : null}
               {ready && anyReady && !sheet.claimedAt ? (
                 <div className="mt-3">
@@ -159,13 +173,19 @@ function SignPage() {
               className="mt-4 grid gap-3"
               onSubmit={(e) => {
                 e.preventDefault();
+                if (!ink) {
+                  setInkMiss(true);
+                  return;
+                }
                 if (!consent) return;
-                signAgreement(sheet.ref, name);
+                signAgreement(sheet.ref, name, ink);
               }}
             >
               <Field label={t("signName")}>
                 <input className={inputCls} value={name} onChange={(e) => setName(e.target.value)} />
               </Field>
+              <SignPad label={t("signDraw")} onChange={setInk} />
+              {inkMiss && !ink ? <p className="text-sm text-seal">{t("signDrawNeed")}</p> : null}
               <label className="flex items-start gap-3 text-sm leading-relaxed">
                 <input className="mt-1 size-4 shrink-0" type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
                 <span>{t("signConsent")}</span>

@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { Btn, CanonSelect, Field, Frame, Kicker, Note, inputCls } from "@/components/finpivot/frame";
+import { SignPad } from "@/components/finpivot/sign-pad";
 import { PRODUCTS } from "@/lib/finpivot/copy";
 import { BILLINGS, nextStatuses } from "@/lib/finpivot/flow";
 import { useI18n } from "@/lib/finpivot/locale";
@@ -34,6 +35,7 @@ function OrdersPage() {
   const [amount, setAmount] = useState("");
   const [draftPay, setDraftPay] = useState<Record<string, string>>({});
   const [draftMethod, setDraftMethod] = useState<Record<string, PayMethod>>({});
+  const [ink, setInk] = useState<Record<string, string>>({});
 
   const clientProjects = projects.filter((p) => p.clientId === clientId);
   const open = orders.filter((o) => o.status !== "已取消" && o.status !== "已交付");
@@ -160,16 +162,22 @@ function OrdersPage() {
                 {sheet ? (
                   <div className="mt-3 border border-rule p-3">
                     <p className="text-sm">{sheet.ref} · {show(agreementPhase(sheet, prepaid))}</p>
-                    {sheet.signedName ? <p className="mt-1 text-sm text-muted">{t("signSigned")} · {sheet.signedName}</p> : null}
-                    {sheet.firmSignedAt ? <p className="mt-1 text-sm text-muted">{t("countersign")} · {sheet.firmSigner}</p> : null}
+                    {sheet.signedName ? (
+                      <p className="mt-1 text-sm text-muted">
+                        {t("signPartyA")} · {sheet.signedName}
+                        {sheet.signedImage ? " · " + t("signDraw") : ""}
+                      </p>
+                    ) : null}
+                    {sheet.firmSignedAt ? <p className="mt-1 text-sm text-muted">{t("signPartyB")} · {sheet.firmSigner}</p> : null}
                     {sheet.claimedMethod ? <p className="mt-1 text-sm text-muted">{t("claimedVia")} · {show(sheet.claimedMethod)}</p> : null}
                     <a className="mt-2 inline-flex h-11 items-center text-sm underline decoration-rule underline-offset-4" href={`/sign?ref=${encodeURIComponent(sheet.ref)}`}>
                       {t("openSign")}
                     </a>
                     {sheet.signedAt && !sheet.firmSignedAt ? (
-                      <div className="mt-3">
-                        <Btn onClick={() => countersign(sheet.ref)}>{t("countersign")}</Btn>
-                        {!firm?.signerName?.trim() ? <p className="mt-2 text-sm text-seal">{t("countersignNeed")}</p> : null}
+                      <div className="mt-3 grid max-w-md gap-2">
+                        <SignPad label={t("signDraw")} onChange={(dataUrl) => setInk({ ...ink, [sheet.ref]: dataUrl })} />
+                        <Btn onClick={() => countersign(sheet.ref, ink[sheet.ref] ?? "")}>{t("countersign")}</Btn>
+                        {!firm?.signerName?.trim() || !ink[sheet.ref] ? <p className="text-sm text-seal">{t("countersignNeed")} {t("signDrawNeed")}</p> : null}
                       </div>
                     ) : null}
                   </div>
