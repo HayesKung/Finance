@@ -16,7 +16,10 @@ export type SqlQuery = <T = Record<string, unknown>>(
   params?: readonly unknown[],
 ) => Promise<T[]>;
 
-export type Sql = { query: SqlQuery };
+export type Sql = {
+  query: SqlQuery;
+  transaction<T>(run: (query: SqlQuery) => Promise<T>): Promise<T>;
+};
 
 let pool: Pool | null = null;
 
@@ -40,6 +43,24 @@ export function getSql(): Sql {
     async query<T>(text: string, params: readonly unknown[] = []) {
       const result = await connection().query(text, params as unknown[]);
       return result.rows as T[];
+    },
+    async transaction<T>(run: (query: SqlQuery) => Promise<T>) {
+      const client = await connection().connect();
+      const query: SqlQuery = async <T,>(text: string, params: readonly unknown[] = []) => {
+        const result = await client.query(text, params as unknown[]);
+        return result.rows as T[];
+      };
+      try {
+        await client.query("begin");
+        const value = await run(query);
+        await client.query("commit");
+        return value;
+      } catch (error) {
+        await client.query("rollback");
+        throw error;
+      } finally {
+        client.release();
+      }
     },
   };
 }

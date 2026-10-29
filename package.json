@@ -6,6 +6,7 @@
     "dev": "vite dev --host 127.0.0.1 --port 4173",
     "build": "vite build",
     "start": "node listen.mjs",
+    "test": "node --experimental-strip-types --test src/lib/finpivot/*.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

@@ -1,0 +1,8 @@
+User-agent: *
+Disallow: /os
+Disallow: /pipeline
+Disallow: /clients
+Disallow: /orders
+Disallow: /playbook
+Disallow: /templates
+Disallow: /sign

@@ -21,6 +21,14 @@
 #     printf 'DATABASE_URL=postgresql://finpivot:<口令>@127.0.0.1:<端口>/finpivot\n' \
 #       > /etc/finance-desk.env && chmod 600 /etc/finance-desk.env
 #   未设置 DATABASE_URL 时，合同读写会在调用时抛错（懒初始化，不影响启动）。
+#   工作人员登录另需三个环境变量，写在同一个 env 文件里，不要提交仓库：
+#     FINANCE_SESSION_SECRET  至少 32 位随机串
+#     FINANCE_OWNER_PASSWORD  财务负责人的口令，至少 10 位
+#     FINANCE_SUPPORT_PASSWORD 支撑人员的口令，至少 10 位，可留空
+#   这三个都没配时，内部页面打不开，不会退回成无登录工作台。
+#   可选 FINANCE_DATA_KEY：支付密钥加密。不设就用 FINANCE_SESSION_SECRET。
+#   只有进程确实在受信任的反向代理后面时，才设 FINANCE_TRUST_PROXY=1。
+#   升级前执行 migrations/0003_access.sql。0003 不会删除 0002 的表。
 
 [Unit]
 Description=Finance MM-FINPIVOT desk (TanStack Start SSR, loopback only)

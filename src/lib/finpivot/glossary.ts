@@ -149,6 +149,9 @@ const EN: Record<string, string> = {
   微信: "WeChat",
   支付宝: "Alipay",
   银行转账: "Bank transfer",
+  "交付前要有编制人和另一名复核人。": "A preparer and a different reviewer are required before delivery.",
+  "实收不能直接改小。冲正要单独记录原因。": "A recorded receipt cannot be reduced directly. A reversal needs its own reason.",
+  "没有已勾选的交付物。": "No deliverable has been checked.",
 };
 
 const ZH = new Map(Object.entries(EN).map(([zh, en]) => [en.toLowerCase(), zh]));

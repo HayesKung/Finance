@@ -24,13 +24,40 @@ async function sql() {
   return getSql();
 }
 
+type ContractRow = {
+  payload: string;
+  customer_token: string;
+  staff_token: string;
+  expires_at: string | Date | null;
+  revoked_at: string | Date | null;
+};
+
+function stamp(value: string | Date | null) {
+  if (!value) return null;
+  if (value instanceof Date) return value.toISOString();
+  return String(value);
+}
+
 async function readRow(token: string, column: "customer_token" | "staff_token") {
   const db = await sql();
-  const rows = await db.query<{ payload: string; customer_token: string; staff_token: string }>(
-    `select customer_token, staff_token, payload from fin_contract where ${column} = $1`,
+  const rows = await db.query<ContractRow>(
+    `select customer_token, staff_token, payload, expires_at, revoked_at from fin_contract where ${column} = $1`,
     [token],
   );
   return rows[0] ?? null;
+}
+
+async function guardCustomer(token: string, row: ContractRow | null) {
+  const access = await import("@/lib/finpivot/access");
+  const session = await import("@/lib/finpivot/session.server");
+  const guard = await import("@/lib/finpivot/guard-db");
+  const open = !!row && access.tokenOpen(stamp(row.expires_at), stamp(row.revoked_at), Date.now());
+  if (open) return row;
+  const bucket = `token:${session.clientIp()}`;
+  if (!(await guard.rateOpen(bucket, access.TOKEN_MISS_LIMIT))) throw new Error("稍后再试");
+  await guard.hitRate(bucket, access.TOKEN_MISS_LIMIT);
+  await guard.audit("customer", "token-miss", token, false);
+  return null;
 }
 
 export const publishContract = createServerFn({ method: "POST" })
@@ -42,14 +69,19 @@ export const publishContract = createServerFn({ method: "POST" })
     return { customerToken, staffToken, payload: asPayload(row.payload) };
   })
   .handler(async ({ data }) => {
+    const session = await import("@/lib/finpivot/session.server");
+    const access = await import("@/lib/finpivot/access");
+    const role = session.requireStaff("publish");
     const current = await readRow(data.customerToken, "customer_token");
     if (current && current.staff_token !== data.staffToken) throw new Error("链接无效");
+    if (current && !access.tokenOpen(stamp(current.expires_at), stamp(current.revoked_at), Date.now())) throw new Error("链接已失效");
     const payload = mergeStaffSave(current ? asPayload(JSON.parse(current.payload)) : null, data.payload);
     const db = await sql();
+    const expires = current ? stamp(current.expires_at) : access.tokenExpiry(Date.now());
     if (!current) {
       await db.query(
-        "insert into fin_contract (customer_token, staff_token, payload) values ($1, $2, $3)",
-        [data.customerToken, data.staffToken, JSON.stringify(payload)],
+        "insert into fin_contract (customer_token, staff_token, payload, expires_at) values ($1, $2, $3, $4)",
+        [data.customerToken, data.staffToken, JSON.stringify(payload), expires],
       );
     } else {
       await db.query("update fin_contract set payload = $2, updated_at = now() where customer_token = $1", [
@@ -57,6 +89,8 @@ export const publishContract = createServerFn({ method: "POST" })
         JSON.stringify(payload),
       ]);
     }
+    const guard = await import("@/lib/finpivot/guard-db");
+    await guard.audit(role ?? "support", "publish", data.customerToken, true);
     return { ok: true as const };
   });
 
@@ -67,7 +101,7 @@ export const readContract = createServerFn({ method: "POST" })
     return { token };
   })
   .handler(async ({ data }) => {
-    const row = await readRow(data.token, "customer_token");
+    const row = await guardCustomer(data.token, await readRow(data.token, "customer_token"));
     if (!row) return { payload: null };
     return { payload: customerView(asPayload(JSON.parse(row.payload))) };
   });
@@ -79,8 +113,11 @@ export const readStaffContract = createServerFn({ method: "POST" })
     return { token };
   })
   .handler(async ({ data }) => {
+    const access = await import("@/lib/finpivot/access");
+    const session = await import("@/lib/finpivot/session.server");
+    session.requireStaff("readStaff");
     const row = await readRow(data.token, "staff_token");
-    if (!row) return { payload: null };
+    if (!row || !access.tokenOpen(stamp(row.expires_at), stamp(row.revoked_at), Date.now())) return { payload: null };
     return { payload: asPayload(JSON.parse(row.payload)) };
   });
 
@@ -94,7 +131,7 @@ export const customerSign = createServerFn({ method: "POST" })
     return { token, name, image };
   })
   .handler(async ({ data }) => {
-    const row = await readRow(data.token, "customer_token");
+    const row = await guardCustomer(data.token, await readRow(data.token, "customer_token"));
     if (!row) throw new Error("没有这张确认书");
     const payload = asPayload(JSON.parse(row.payload));
     if (payload.signedAt) return { ok: true as const };
@@ -106,6 +143,8 @@ export const customerSign = createServerFn({ method: "POST" })
       data.token,
       JSON.stringify(payload),
     ]);
+    const guard = await import("@/lib/finpivot/guard-db");
+    await guard.audit("customer", "sign", data.token, true);
     return { ok: true as const };
   });
 
@@ -118,7 +157,7 @@ export const customerClaim = createServerFn({ method: "POST" })
     return { token, method: method as PayMethod };
   })
   .handler(async ({ data }) => {
-    const row = await readRow(data.token, "customer_token");
+    const row = await guardCustomer(data.token, await readRow(data.token, "customer_token"));
     if (!row) throw new Error("没有这张确认书");
     const payload = asPayload(JSON.parse(row.payload));
     if (!payload.signedAt || !payload.firmSignedAt || payload.claimedAt) return { ok: false as const };
@@ -130,13 +169,37 @@ export const customerClaim = createServerFn({ method: "POST" })
       data.token,
       JSON.stringify(payload),
     ]);
+    const guard = await import("@/lib/finpivot/guard-db");
+    await guard.audit("customer", "claim", data.token, true);
     return { ok: true as const };
   });
 
+export const revokeContract = createServerFn({ method: "POST" })
+  .validator((data: unknown) => {
+    const token = String(asRecord(data).token ?? "");
+    if (!tokenOk(token)) throw new Error("链接无效");
+    return { token };
+  })
+  .handler(async ({ data }) => {
+    const session = await import("@/lib/finpivot/session.server");
+    const role = session.requireStaff("revoke");
+    const db = await sql();
+    const rows = await db.query<{ customer_token: string }>(
+      "update fin_contract set revoked_at = now(), updated_at = now() where customer_token = $1 and revoked_at is null returning customer_token",
+      [data.token],
+    );
+    const guard = await import("@/lib/finpivot/guard-db");
+    await guard.audit(role ?? "owner", "revoke", data.token, rows.length > 0);
+    return { ok: rows.length > 0 };
+  });
+
 export const channelStatus = createServerFn({ method: "POST" }).handler(async () => {
+  const session = await import("@/lib/finpivot/session.server");
+  session.requireStaff("readStaff");
   const db = await sql();
   const rows = await db.query<{ id: string; secret: string }>("select id, secret from fin_channel");
-  const set = new Set(rows.filter((row) => row.secret.trim()).map((row) => row.id));
+  const access = await import("@/lib/finpivot/access");
+  const set = new Set(rows.filter((row) => access.secretArmed(row.secret)).map((row) => row.id));
   return {
     wechat: set.has("wechat"),
     alipay: set.has("alipay"),
@@ -157,12 +220,19 @@ export const saveChannel = createServerFn({ method: "POST" })
     };
   })
   .handler(async ({ data }) => {
+    const session = await import("@/lib/finpivot/session.server");
+    const access = await import("@/lib/finpivot/access");
+    const role = session.requireStaff("saveChannel");
+    if (!data.secret) throw new Error("密钥不能为空");
+    const sealed = access.sealSecret(data.secret, session.dataKey());
     const db = await sql();
     await db.query(
       `insert into fin_channel (id, app_id, merchant_id, secret)
        values ($1, $2, $3, $4)
        on conflict (id) do update set app_id = excluded.app_id, merchant_id = excluded.merchant_id, secret = excluded.secret, updated_at = now()`,
-      [data.id, data.appId, data.merchantId, data.secret],
+      [data.id, data.appId, data.merchantId, sealed],
     );
-    return { ok: true as const, armed: Boolean(data.secret) };
+    const guard = await import("@/lib/finpivot/guard-db");
+    await guard.audit(role ?? "owner", "saveChannel", data.id, true);
+    return { ok: true as const, armed: true };
   });

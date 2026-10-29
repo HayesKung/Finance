@@ -37,9 +37,11 @@ const emptyFirm: Firm = {
   alipayAccount: "",
 };
 import {
+  applyReceipt,
   buildPlan,
   deliverableNames,
   gateMove,
+  reviewReady,
   type Billing,
   type ClientStatus,
   type OrderStatus,
@@ -136,6 +138,9 @@ export type Deliverable = {
   orderId: string;
   name: string;
   done: boolean;
+  preparer?: string;
+  reviewer?: string;
+  reviewedAt?: string;
 };
 
 export type OrderInput = {
@@ -240,7 +245,9 @@ type OsState = {
   issuePlan: (orderId: string) => void;
   moveOrder: (orderId: string, status: OrderStatus) => void;
   recordReceipt: (paymentId: string, yuan: number, method: "" | PayMethod) => void;
+  setReview: (orderId: string, preparer: string, reviewer: string) => void;
   toggleDeliverable: (id: string) => void;
+  replaceDesk: (patch: Partial<OsState>) => void;
 };
 
 const emptyAnswers = () => {
@@ -669,7 +676,8 @@ export const useOs = create<OsState>()(
           const done = items.length > 0 && items.every((d) => d.done);
           const sheet = (s.agreements ?? []).find((item) => item.orderId === orderId);
           const contractReady = Boolean(sheet?.signedAt && sheet?.firmSignedAt);
-          const move = gateMove(order.status, status, order.billing, lines, done, contractReady);
+          const reviewOk = reviewReady(items).ok;
+          const move = gateMove(order.status, status, order.billing, lines, done, contractReady, reviewOk);
           return {
             orders: s.orders.map((o) =>
               o.id === orderId
@@ -681,17 +689,35 @@ export const useOs = create<OsState>()(
           };
         }),
       recordReceipt: (paymentId, yuan, method) =>
-        set((s) => ({
-          payments: s.payments.map((p) => {
-            if (p.id !== paymentId) return p;
-            const receivedYuan = Math.max(0, Math.min(p.expectedYuan, Math.round(yuan)));
-            return { ...p, receivedYuan, method };
-          }),
-        })),
+        set((s) => {
+          const payment = s.payments.find((item) => item.id === paymentId);
+          if (!payment) return s;
+          const applied = applyReceipt(payment.receivedYuan, yuan);
+          return {
+            payments: s.payments.map((item) =>
+              item.id === paymentId && applied.ok ? { ...item, receivedYuan: applied.receivedYuan, method } : item,
+            ),
+            orders: s.orders.map((order) =>
+              order.id === payment.orderId ? { ...order, blockReason: applied.ok ? "" : applied.reason } : order,
+            ),
+          };
+        }),
+      setReview: (orderId, preparer, reviewer) =>
+        set((s) => {
+          const left = preparer.trim();
+          const right = reviewer.trim();
+          const reviewedAt = left && right && left !== right ? new Date().toISOString() : "";
+          return {
+            deliverables: s.deliverables.map((item) =>
+              item.orderId === orderId ? { ...item, preparer: left, reviewer: right, reviewedAt } : item,
+            ),
+          };
+        }),
       toggleDeliverable: (id) =>
         set((s) => ({
           deliverables: s.deliverables.map((d) => (d.id === id ? { ...d, done: !d.done } : d)),
         })),
+      replaceDesk: (patch) => set(patch),
     }),
     { name: "finpivot-os-v1", storage: createJSONStorage(() => safeStorage), skipHydration: true },
   ),
@@ -700,4 +726,35 @@ export const useOs = create<OsState>()(
 export function hydrateDesk() {
   if (useOs.persist.hasHydrated()) return;
   void Promise.resolve(useOs.persist.rehydrate()).catch(() => undefined);
+}
+
+const DESK_KEYS = [
+  "leads",
+  "outreach",
+  "answers",
+  "risks",
+  "diagAlias",
+  "days",
+  "templates",
+  "articleChecked",
+  "report",
+  "hostingClients",
+  "hostingFee",
+  "exportOrders",
+  "exportFee",
+  "clients",
+  "projects",
+  "orders",
+  "payments",
+  "deliverables",
+  "inquiries",
+  "agreements",
+  "firm",
+] as const;
+
+export function deskSnapshot() {
+  const state = useOs.getState();
+  const body: Record<string, unknown> = {};
+  for (const key of DESK_KEYS) body[key] = state[key];
+  return JSON.stringify(body);
 }

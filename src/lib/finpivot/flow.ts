@@ -93,6 +93,26 @@ export function canStart(billing: Billing, lines: PayDraft[]) {
   return { ok: true, reason: "" };
 }
 
+export function applyReceipt(current: number, next: number) {
+  if (!Number.isFinite(next)) return { ok: false as const, receivedYuan: current, reason: "金额不正确。" };
+  const yuan = Math.max(0, Math.round(next));
+  if (yuan < current) return { ok: false as const, receivedYuan: current, reason: "实收不能直接改小。冲正要单独记录原因。" };
+  return { ok: true as const, receivedYuan: yuan, reason: "" };
+}
+
+export function reviewReady(items: { done?: boolean; preparer?: string; reviewer?: string; reviewedAt?: string }[]) {
+  const relevant = items.filter((item) => item.done !== false);
+  if (relevant.length === 0) return { ok: false, reason: "没有已勾选的交付物。" };
+  for (const item of relevant) {
+    const preparer = item.preparer?.trim() ?? "";
+    const reviewer = item.reviewer?.trim() ?? "";
+    if (!preparer || !reviewer || preparer === reviewer || !item.reviewedAt) {
+      return { ok: false, reason: "交付前要有编制人和另一名复核人。" };
+    }
+  }
+  return { ok: true, reason: "" };
+}
+
 export function canDeliver(lines: PayDraft[], deliverablesDone: boolean) {
   if (!deliverablesDone) return { ok: false, reason: "交付物还没勾完，不能标已交付。" };
   if (lines.length === 0 || lines.some((l) => !settled(l))) {
@@ -108,11 +128,17 @@ export function gateMove(
   lines: PayDraft[],
   deliverablesDone: boolean,
   contractReady = true,
+  reviewOk = true,
 ) {
   if (!NEXT[status].includes(next)) return { ok: false, reason: `不能从${status}改到${next}。` };
   if (next === "执行中" && !contractReady) return { ok: false, reason: "服务确认书还没双方签完，不能开工。" };
   if (next === "执行中") return canStart(billing, lines);
-  if (next === "已交付") return canDeliver(lines, deliverablesDone);
+  if (next === "已交付") {
+    const delivered = canDeliver(lines, deliverablesDone);
+    if (!delivered.ok) return delivered;
+    if (!reviewOk) return { ok: false, reason: "交付前要有编制人和另一名复核人。" };
+    return { ok: true, reason: "" };
+  }
   if (next === "待收款" && lines.length === 0) return { ok: false, reason: "先生成收款计划。" };
   return { ok: true, reason: "" };
 }

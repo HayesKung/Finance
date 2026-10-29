@@ -1,4 +1,4 @@
-import { PRODUCTS } from "@/lib/finpivot/copy";
+import { PRODUCTS } from "./copy.ts";
 
 export const PUBLIC_SITE_LAUNCHED = false;
 

@@ -1,9 +1,10 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { META } from "@/lib/finpivot/copy";
 import { PUBLIC_SITE_LAUNCHED } from "@/lib/finpivot/inquiry";
 import { useI18n } from "@/lib/finpivot/locale";
-import { hydrateDesk } from "@/lib/finpivot/store";
+import { deskSnapshot, hydrateDesk, useOs } from "@/lib/finpivot/store";
+import { loadDesk, loginStaff, logoutStaff, saveDesk, whoami } from "@/lib/finpivot/staff-api";
 import { footerLine } from "@/lib/finpivot/ui";
 
 const browse = [
@@ -126,6 +127,70 @@ function PublicShell({ path, hash, children }: { path: string; hash: string; chi
 
 function DeskShell({ path, children }: { path: string; children: ReactNode }) {
   const { locale, t } = useI18n();
+  const [gate, setGate] = useState<"check" | "in" | "out" | "off">("check");
+  const [role, setRole] = useState<"owner" | "support" | null>(null);
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const replaceDesk = useOs((s) => s.replaceDesk);
+  useEffect(() => {
+    let stop = false;
+    void whoami()
+      .then((row) => {
+        if (stop) return;
+        if (!row.configured) {
+          setGate("off");
+          return;
+        }
+        setRole(row.role);
+        setGate(row.role ? "in" : "out");
+      })
+      .catch(() => {
+        if (!stop) setGate("off");
+      });
+    return () => {
+      stop = true;
+    };
+  }, []);
+  useEffect(() => {
+    if (gate !== "in" || !role) return;
+    let version = 0;
+    let ready = false;
+    let applying = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    void loadDesk()
+      .then((row) => {
+        version = row.version;
+        if (row.version > 0 && row.body) {
+          applying = true;
+          replaceDesk(JSON.parse(row.body) as Partial<ReturnType<typeof useOs.getState>>);
+          applying = false;
+        }
+        ready = true;
+      })
+      .catch((reason: unknown) => {
+        ready = false;
+        setError(reason instanceof Error ? reason.message : "台账没有载入");
+      });
+    const unsub = useOs.subscribe(() => {
+      if (!ready || applying) return;
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        const body = deskSnapshot();
+        void saveDesk({ data: { version, body } })
+          .then((saved) => {
+            version = saved.version;
+            setError("");
+          })
+          .catch((reason: unknown) => {
+            setError(reason instanceof Error ? reason.message : "台账没有保存");
+          });
+      }, 800);
+    });
+    return () => {
+      unsub();
+      clearTimeout(timer);
+    };
+  }, [gate, role, replaceDesk]);
   return (
     <div className="min-h-screen bg-paper text-ink">
       <div className="bg-seal text-seal-ink">
@@ -139,32 +204,79 @@ function DeskShell({ path, children }: { path: string; children: ReactNode }) {
               <p className="truncate font-serif text-xl text-ink">{t("appName")}</p>
             </Link>
             <div className="flex items-center gap-2">
+              {role ? <span className="text-sm text-muted">{role === "owner" ? t("staffOwner") : t("staffSupport")}</span> : null}
+              {gate === "in" ? (
+                <button
+                  type="button"
+                  className="inline-flex h-11 items-center border border-rule px-3 text-sm"
+                  onClick={() => {
+                    void logoutStaff().then(() => {
+                      setRole(null);
+                      setGate("out");
+                    });
+                  }}
+                >
+                  {t("staffLeave")}
+                </button>
+              ) : null}
               <Link to="/" className="inline-flex h-11 items-center border border-rule px-3 text-sm text-ink">
                 {t("seePublic")}
               </Link>
               <LocaleSwitch />
             </div>
           </div>
-          <nav className="flex min-w-0 items-center gap-2 overflow-x-auto pb-1" aria-label={t("deskLabel")}>
-            <span className="shrink-0 text-xs text-muted">{t("deskLabel")}</span>
-            {desk.map((l) => {
-              const on = path === l.to;
-              return (
-                <Link
-                  key={l.to}
-                  to={l.to}
-                  className={`inline-flex h-11 shrink-0 items-center px-2 text-sm ${
-                    on ? "border-b-2 border-seal text-ink" : "text-muted"
-                  }`}
-                >
-                  {t(l.label)}
-                </Link>
-              );
-            })}
-          </nav>
+          {gate === "in" ? (
+            <nav className="flex min-w-0 items-center gap-2 overflow-x-auto pb-1" aria-label={t("deskLabel")}>
+              <span className="shrink-0 text-xs text-muted">{t("deskLabel")}</span>
+              {desk.map((l) => {
+                const on = path === l.to;
+                return (
+                  <Link
+                    key={l.to}
+                    to={l.to}
+                    className={`inline-flex h-11 shrink-0 items-center px-2 text-sm ${
+                      on ? "border-b-2 border-seal text-ink" : "text-muted"
+                    }`}
+                  >
+                    {t(l.label)}
+                  </Link>
+                );
+              })}
+            </nav>
+          ) : null}
         </div>
       </header>
-      <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
+      <main className="mx-auto max-w-6xl px-4 py-8">
+        {error ? <p className="mb-4 border-l-2 border-seal pl-3 text-sm text-seal">{error}</p> : null}
+        {gate === "check" ? null : null}
+        {gate === "off" ? <p className="text-sm leading-relaxed">{t("staffUnconfigured")}</p> : null}
+        {gate === "out" ? (
+          <form
+            className="max-w-md border border-rule p-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              setError("");
+              void loginStaff({ data: { password } })
+                .then((row) => {
+                  setPassword("");
+                  setRole(row.role);
+                  setGate("in");
+                })
+                .catch(() => setError(t("staffBad")));
+            }}
+          >
+            <p className="text-sm leading-relaxed">{t("staffLocked")}</p>
+            <label className="mt-4 flex flex-col gap-1 text-sm">
+              <span className="text-muted">{t("staffPassword")}</span>
+              <input className={inputCls} type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} />
+            </label>
+            <div className="mt-4">
+              <Btn type="submit">{t("staffEnter")}</Btn>
+            </div>
+          </form>
+        ) : null}
+        {gate === "in" ? children : null}
+      </main>
       <footer className="border-t border-rule">
         <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-6 text-sm text-muted md:flex-row md:justify-between">
           <p>{footerLine(locale)}</p>

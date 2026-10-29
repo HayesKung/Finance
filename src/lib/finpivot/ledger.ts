@@ -1,0 +1,75 @@
+import { gateMove, reviewReady, type Billing, type OrderStatus, type PayKind } from "./flow.ts";
+
+export type DeskOrder = {
+  id: string;
+  status: OrderStatus;
+  billing: Billing;
+  amountYuan: number;
+};
+
+export type DeskPay = {
+  id: string;
+  orderId: string;
+  kind: PayKind;
+  expectedYuan: number;
+  receivedYuan: number;
+};
+
+export type DeskItem = {
+  orderId: string;
+  done: boolean;
+  preparer?: string;
+  reviewer?: string;
+  reviewedAt?: string;
+};
+
+export type DeskAgreement = {
+  orderId: string;
+  signedAt?: string;
+  firmSignedAt?: string;
+};
+
+export type DeskBody = {
+  orders: DeskOrder[];
+  payments: DeskPay[];
+  deliverables: DeskItem[];
+  agreements?: DeskAgreement[];
+};
+
+export function diffDesk(prev: DeskBody, next: DeskBody) {
+  const prevOrders = new Map(prev.orders.map((order) => [order.id, order]));
+  for (const order of next.orders) {
+    const before = prevOrders.get(order.id);
+    if (!before || before.status === order.status) continue;
+    const lines = next.payments.filter((line) => line.orderId === order.id);
+    const items = next.deliverables.filter((item) => item.orderId === order.id);
+    const done = items.length > 0 && items.every((item) => item.done);
+    const sheet = (next.agreements ?? []).find((item) => item.orderId === order.id);
+    const contractReady = Boolean(sheet?.signedAt && sheet?.firmSignedAt);
+    const move = gateMove(before.status, order.status, order.billing, lines, done, contractReady, reviewReady(items).ok);
+    if (!move.ok) return move;
+  }
+  const prevPay = new Map(prev.payments.map((line) => [line.id, line]));
+  for (const line of next.payments) {
+    const before = prevPay.get(line.id);
+    if (before && line.receivedYuan < before.receivedYuan) {
+      return { ok: false, reason: "实收不能直接改小。冲正要单独记录原因。" };
+    }
+  }
+  return { ok: true, reason: "" };
+}
+
+export function parseDesk(raw: string): DeskBody | null {
+  try {
+    const value = JSON.parse(raw) as Partial<DeskBody>;
+    if (!value || !Array.isArray(value.orders) || !Array.isArray(value.payments) || !Array.isArray(value.deliverables)) return null;
+    return {
+      orders: value.orders,
+      payments: value.payments,
+      deliverables: value.deliverables,
+      agreements: Array.isArray(value.agreements) ? value.agreements : [],
+    };
+  } catch {
+    return null;
+  }
+}

@@ -8,6 +8,7 @@ import { useI18n } from "@/lib/finpivot/locale";
 import { moveLabel, openOrdersLine } from "@/lib/finpivot/ui";
 import { PAY_METHODS, agreementPhase, type PayMethod } from "@/lib/finpivot/agreement";
 import { channelStatus, readStaffContract, saveChannel } from "@/lib/finpivot/contract-api";
+import { whoami } from "@/lib/finpivot/staff-api";
 import { pushSheet } from "@/lib/finpivot/publish-client";
 import { useOs, type Order, type Product } from "@/lib/finpivot/store";
 
@@ -24,6 +25,7 @@ function OrdersPage() {
   const issuePlan = useOs((s) => s.issuePlan);
   const moveOrder = useOs((s) => s.moveOrder);
   const recordReceipt = useOs((s) => s.recordReceipt);
+  const setReview = useOs((s) => s.setReview);
   const toggleDeliverable = useOs((s) => s.toggleDeliverable);
   const agreements = useOs((s) => s.agreements ?? []);
   const firm = useOs((s) => s.firm);
@@ -40,12 +42,19 @@ function OrdersPage() {
   const [ink, setInk] = useState<Record<string, string>>({});
   const [channels, setChannels] = useState({ wechat: false, alipay: false, esign: false });
   const [secret, setSecret] = useState<Record<string, string>>({});
+  const [role, setRole] = useState<"owner" | "support" | null>(null);
+  const [reviewName, setReviewName] = useState<Record<string, { preparer: string; reviewer: string }>>({});
 
   useEffect(() => {
     let stop = false;
     void channelStatus()
       .then((status) => {
         if (!stop) setChannels(status);
+      })
+      .catch(() => undefined);
+    void whoami()
+      .then((row) => {
+        if (!stop) setRole(row.role);
       })
       .catch(() => undefined);
     void (async () => {
@@ -123,24 +132,28 @@ function OrdersPage() {
                 <a className="mt-2 inline-flex h-11 items-center text-sm underline decoration-rule underline-offset-4" href={href} target="_blank" rel="noreferrer">
                   {t("channelOpen")}
                 </a>
-                <Field label={t("channelSecret")}>
-                  <input className={inputCls} type="password" value={secret[id] ?? ""} autoComplete="off" onChange={(e) => setSecret({ ...secret, [id]: e.target.value })} />
-                </Field>
-                <div className="mt-2">
-                  <Btn
-                    tone="paper"
-                    onClick={() => {
-                      const value = secret[id]?.trim() ?? "";
-                      if (!value) return;
-                      void saveChannel({ data: { id, appId: "", merchantId: "", secret: value } }).then(() => {
-                        setChannels({ ...channels, [id]: true });
-                        setSecret({ ...secret, [id]: "" });
-                      });
-                    }}
-                  >
-                    {t("channelSave")}
-                  </Btn>
-                </div>
+                {role === "owner" ? (
+                  <>
+                    <Field label={t("channelSecret")}>
+                      <input className={inputCls} type="password" value={secret[id] ?? ""} autoComplete="off" onChange={(e) => setSecret({ ...secret, [id]: e.target.value })} />
+                    </Field>
+                    <div className="mt-2">
+                      <Btn
+                        tone="paper"
+                        onClick={() => {
+                          const value = secret[id]?.trim() ?? "";
+                          if (!value) return;
+                          void saveChannel({ data: { id, appId: "", merchantId: "", secret: value } }).then(() => {
+                            setChannels({ ...channels, [id]: true });
+                            setSecret({ ...secret, [id]: "" });
+                          });
+                        }}
+                      >
+                        {t("channelSave")}
+                      </Btn>
+                    </div>
+                  </>
+                ) : null}
               </li>
             ))}
           </ul>
@@ -327,6 +340,41 @@ function OrdersPage() {
                       </li>
                     ))}
                   </ul>
+                  <div className="mt-3 grid gap-3 md:grid-cols-[1fr_1fr_auto] md:items-end">
+                    <Field label={t("preparer")}>
+                      <input
+                        className={inputCls}
+                        value={reviewName[order.id]?.preparer ?? items[0]?.preparer ?? ""}
+                        onChange={(e) =>
+                          setReviewName({
+                            ...reviewName,
+                            [order.id]: { preparer: e.target.value, reviewer: reviewName[order.id]?.reviewer ?? items[0]?.reviewer ?? "" },
+                          })
+                        }
+                      />
+                    </Field>
+                    <Field label={t("reviewer")}>
+                      <input
+                        className={inputCls}
+                        value={reviewName[order.id]?.reviewer ?? items[0]?.reviewer ?? ""}
+                        onChange={(e) =>
+                          setReviewName({
+                            ...reviewName,
+                            [order.id]: { reviewer: e.target.value, preparer: reviewName[order.id]?.preparer ?? items[0]?.preparer ?? "" },
+                          })
+                        }
+                      />
+                    </Field>
+                    <Btn
+                      tone="paper"
+                      onClick={() => {
+                        const row = reviewName[order.id] ?? { preparer: items[0]?.preparer ?? "", reviewer: items[0]?.reviewer ?? "" };
+                        setReview(order.id, row.preparer, row.reviewer);
+                      }}
+                    >
+                      {t("reviewSave")}
+                    </Btn>
+                  </div>
                 ) : null}
               </li>
             );
