@@ -2,8 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { Btn, Field, Frame, Kicker, Note, areaCls, inputCls } from "@/components/finpivot/frame";
 import { INQUIRY_NEEDS, type InquiryNeed } from "@/lib/finpivot/inquiry";
+import { submitInquiry } from "@/lib/finpivot/inquiry-api";
 import { useI18n } from "@/lib/finpivot/locale";
-import { useOs } from "@/lib/finpivot/store";
 
 export const Route = createFileRoute("/ask")({ component: AskPage });
 
@@ -15,8 +15,7 @@ const NEED_KEY = {
 } as const;
 
 function AskPage() {
-  const { locale, t } = useI18n();
-  const addInquiry = useOs((s) => s.addInquiry);
+  const { locale, show, t } = useI18n();
   const [company, setCompany] = useState("");
   const [contactName, setContactName] = useState("");
   const [contact, setContact] = useState("");
@@ -27,24 +26,26 @@ function AskPage() {
   const [consent, setConsent] = useState(false);
   const [warn, setWarn] = useState("");
   const [ref, setRef] = useState("");
+  const [pending, setPending] = useState(false);
 
   const submit = () => {
+    if (pending) return;
     if (!company.trim() || !contactName.trim() || !contact.trim() || !consent) {
       setWarn(t("askMissing"));
       return;
     }
-    const saved = addInquiry({
-      locale,
-      company: company.trim(),
-      contactName: contactName.trim(),
-      contact: contact.trim(),
-      market: market.trim(),
-      need,
-      currency: currency.trim().toUpperCase(),
-      note: note.trim(),
-    });
-    setRef(saved.ref);
-    setWarn("");
+    setPending(true);
+    void submitInquiry({
+      data: { locale, company, contactName, contact, market, need, currency, note, consent: true },
+    })
+      .then((saved) => {
+        setRef(saved.ref);
+        setWarn("");
+      })
+      .catch((reason: unknown) => {
+        setWarn(show(reason instanceof Error ? reason.message : "需求没有记下。"));
+      })
+      .finally(() => setPending(false));
   };
 
   return (

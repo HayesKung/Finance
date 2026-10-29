@@ -39,6 +39,33 @@ export type InquiryLeadDraft = {
   privateContact: string;
 };
 
+export function acceptInquiryDraft(input: {
+  company: string;
+  contactName: string;
+  contact: string;
+  market: string;
+  need: string;
+  currency: string;
+  note: string;
+  consent: boolean;
+}) {
+  const company = input.company.trim();
+  const contactName = input.contactName.trim();
+  const contact = input.contact.trim();
+  const market = input.market.trim();
+  const note = input.note.trim();
+  const currency = input.currency.trim().toUpperCase();
+  if (!input.consent || !company || !contactName || !contact) return { ok: false as const, reason: "公司、姓名、联系方式和确认都要填。" };
+  if (!(INQUIRY_NEEDS as readonly string[]).includes(input.need)) return { ok: false as const, reason: "需求不正确" };
+  if (company.length > 200 || contactName.length > 200 || contact.length > 200 || market.length > 200 || note.length > 2000 || currency.length > 12) {
+    return { ok: false as const, reason: "需求不正确" };
+  }
+  return {
+    ok: true as const,
+    value: { company, contactName, contact, market, need: input.need as InquiryNeed, currency, note },
+  };
+}
+
 export function makeInquiryRef(day: string, salt: string): string {
   const clean = salt.replace(/[^a-zA-Z0-9]/g, "").slice(0, 4).toUpperCase();
   return `INQ-${day}-${clean || "0000"}`;

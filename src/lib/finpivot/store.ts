@@ -963,3 +963,35 @@ export function deskSnapshot() {
   for (const key of DESK_KEYS) body[key] = state[key];
   return JSON.stringify(body);
 }
+
+export function clearDeskCache() {
+  useOs.persist.clearStorage();
+  useOs.setState({
+    leads: [],
+    outreach: [],
+    answers: {},
+    risks: [],
+    diagAlias: "",
+    clients: [],
+    projects: [],
+    orders: [],
+    payments: [],
+    deliverables: [],
+    inquiries: [],
+    agreements: [],
+    firm: emptyFirm,
+    report: {
+      range: "",
+      added: "",
+      invited: "",
+      diagnosed: "",
+      listed: "",
+      quoted: "",
+      note: "",
+      status: "草稿",
+      preparer: "",
+      reviewer: "",
+      block: "",
+    },
+  });
+}

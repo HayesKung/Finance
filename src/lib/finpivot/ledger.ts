@@ -1,3 +1,4 @@
+import { guardDesk } from "./desk-guard.ts";
 import { admissionReady, booksBalance, gateMove, handoffReady, reviewReady, serviceAllowed, sopReady, type Admission, type Billing, type Handoff, type OrderStatus, type PayKind } from "./flow.ts";
 import { receiptChange } from "./journal.ts";
 
@@ -46,6 +47,8 @@ export type DeskBody = {
 };
 
 export function diffDesk(prev: DeskBody, next: DeskBody, role: "owner" | "support" = "owner") {
+  const guarded = guardDesk(prev, next);
+  if (!guarded.ok) return guarded;
   const refs = next.payments.map((line) => line.receiptRef?.trim() ?? "").filter((ref) => ref.length >= 4);
   if (new Set(refs).size !== refs.length) return { ok: false, reason: "同一回单号不能用两次。" };
   for (const before of prev.orders) {

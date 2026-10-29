@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { Btn, CanonSelect, Field, Frame, Kicker, Note, inputCls } from "@/components/finpivot/frame";
+import { ServerInquiries } from "@/components/finpivot/server-inquiries";
 import { OUTREACH_RESULTS, PRODUCTS, SOURCES, STAGES } from "@/lib/finpivot/copy";
 import { canon } from "@/lib/finpivot/glossary";
 import { useI18n } from "@/lib/finpivot/locale";
@@ -140,6 +141,7 @@ function PipelinePage() {
   return (
     <Frame>
       <Kicker n="05">{t("inqKicker")}</Kicker>
+      <ServerInquiries />
       {inquiries.length === 0 ? (
         <Note>{t("inqEmpty")}</Note>
       ) : (

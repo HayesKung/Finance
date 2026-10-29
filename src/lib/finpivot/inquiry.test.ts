@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { inquiryToLead, makeInquiryRef, needToProduct } from "./inquiry.ts";
+import { acceptInquiryDraft, inquiryToLead, makeInquiryRef, needToProduct } from "./inquiry.ts";
 
 describe("public inquiry", () => {
   it("builds a readable reference and does not invent a product when the visitor is unsure", () => {
@@ -30,5 +30,23 @@ describe("public inquiry", () => {
     assert.match(lead.note, /INQ-20261029-ABCD/);
     assert.match(lead.note, /USD/);
     assert.equal("clientId" in lead, false);
+  });
+
+  it("refuses a public inquiry that has no consent or an unknown need", () => {
+    const row = {
+      company: "华东门窗",
+      contactName: "周某",
+      contact: "zhou@example.com",
+      market: "",
+      need: "还不确定",
+      currency: "usd",
+      note: "",
+      consent: true,
+    };
+    const saved = acceptInquiryDraft(row);
+    assert.equal(saved.ok, true);
+    if (saved.ok) assert.equal(saved.value.currency, "USD");
+    assert.equal(acceptInquiryDraft({ ...row, consent: false }).ok, false);
+    assert.equal(acceptInquiryDraft({ ...row, need: "代持股" }).ok, false);
   });
 });

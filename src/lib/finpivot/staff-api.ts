@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { diffSensitive } from "@/lib/finpivot/desk-guard";
 import { diffDesk, parseDesk } from "@/lib/finpivot/ledger";
 
 function asRecord(data: unknown) {
@@ -101,6 +102,8 @@ export const saveDesk = createServerFn({ method: "POST" })
       if (!prev) throw new Error("台账不正确");
       const move = diffDesk(prev, parsed, role);
       if (!move.ok) throw new Error(move.reason);
+      const sensitive = diffSensitive(current[0]?.body ?? "", data.body, role);
+      if (!sensitive.ok) throw new Error(sensitive.reason);
       const posting = await import("@/lib/finpivot/journal-post");
       const guard = await import("@/lib/finpivot/guard-db");
       await posting.postMoneyMoves(query, prev, parsed);
