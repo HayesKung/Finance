@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { diffDesk } from "./ledger.ts";
-import { applyReceipt, reviewReady } from "./flow.ts";
+import { applyReceipt, reviewReady, sopItems } from "./flow.ts";
 
 const order = {
   id: "o1",
@@ -26,10 +26,15 @@ describe("server desk checks", () => {
     assert.match(diffDesk(prev, next).reason, /确认书/);
   });
 
-  it("rejects a duplicate-looking receipt that lowers the recorded amount", () => {
+  it("rejects a receipt cut unless the reversal reason is written", () => {
     const prev = { orders: [order], payments: lines, deliverables: [] };
-    const next = { ...prev, payments: [{ ...lines[0], receivedYuan: 1000 }, lines[1]] };
-    assert.match(diffDesk(prev, next).reason, /不能直接改小/);
+    const bare = { ...prev, payments: [{ ...lines[0], receivedYuan: 1500 }, lines[1]] };
+    assert.match(diffDesk(prev, bare).reason, /冲正/);
+    const noted = {
+      ...prev,
+      payments: [{ ...lines[0], receivedYuan: 1500, reversalReason: "回单金额写错，冲回五百" }, lines[1]],
+    };
+    assert.equal(diffDesk(prev, noted).ok, true);
     assert.equal(applyReceipt(2000, 2000).ok, true);
     assert.equal(applyReceipt(2000, 1000).ok, false);
   });
@@ -38,9 +43,21 @@ describe("server desk checks", () => {
     const items = [{ orderId: "o1", done: true, preparer: "海", reviewer: "海", reviewedAt: "2026-10-29T00:00:00.000Z" }];
     assert.equal(reviewReady(items).ok, false);
     const ready = [{ ...items[0], reviewer: "支撑" }];
-    const prev = { orders: [{ ...order, status: "执行中" as const }], payments: lines.map((line) => ({ ...line, receivedYuan: 2000 })), deliverables: ready };
-    const next = { ...prev, orders: [{ ...prev.orders[0], status: "已交付" as const }], agreements: [{ orderId: "o1", signedAt: "a", firmSignedAt: "b" }] };
+    const sop = sopItems("出口财务包").map((id) => ({ id, done: true }));
+    const running = { ...order, status: "执行中" as const, product: "出口财务包", sop };
+    const prev = { orders: [running], payments: lines.map((line) => ({ ...line, receivedYuan: 2000 })), deliverables: ready };
+    const next = { ...prev, orders: [{ ...running, status: "已交付" as const }], agreements: [{ orderId: "o1", signedAt: "a", firmSignedAt: "b" }] };
     assert.equal(diffDesk({ ...prev, deliverables: items }, { ...next, deliverables: items }).ok, false);
     assert.equal(diffDesk(prev, next).ok, true);
+  });
+
+  it("blocks start when the file is signed but the client has not authorized the scope", () => {
+    const prev = { orders: [{ ...order, product: "出口财务包" }], payments: lines, deliverables: [], agreements: [] };
+    const next = {
+      ...prev,
+      orders: [{ ...order, product: "出口财务包", status: "执行中" as const }],
+      agreements: [{ orderId: "o1", signedAt: "a", firmSignedAt: "b" }],
+    };
+    assert.match(diffDesk(prev, next).reason, /授权|范围/);
   });
 });

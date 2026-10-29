@@ -152,6 +152,17 @@ const EN: Record<string, string> = {
   "交付前要有编制人和另一名复核人。": "A preparer and a different reviewer are required before delivery.",
   "实收不能直接改小。冲正要单独记录原因。": "A recorded receipt cannot be reduced directly. A reversal needs its own reason.",
   "没有已勾选的交付物。": "No deliverable has been checked.",
+  "这项涉及执业资质，本所不能直接开工。": "This needs a licence this desk does not have.",
+  "服务范围未定，不能开工。": "The service scope is not set.",
+  "还没有写清服务范围和边界。": "The scope and limits are not written.",
+  "还没有客户授权和服务边界。": "Client authorization and scope are missing.",
+  "保密还没有记下。": "Confidentiality has not been noted.",
+  "利益冲突还没有核对。": "The conflict check is missing.",
+  "客户授权还没有记下。": "Client authorization has not been noted.",
+  "工作底稿还没勾完。": "The workpaper is not complete.",
+  "没有这条服务的底稿。": "This service has no workpaper.",
+  "冲正要写明原因。": "A reversal needs a written reason.",
+  "冲正金额不正确。": "The reversal amount is not valid.",
 };
 
 const ZH = new Map(Object.entries(EN).map(([zh, en]) => [en.toLowerCase(), zh]));

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { buildPlan, canDeliver, canStart, gateMove, settled } from "./flow.ts";
+import { admissionReady, applyReversal, buildPlan, canDeliver, canStart, gateMove, serviceAllowed, settled, sopItems, sopReady } from "./flow.ts";
 
 describe("service fee gates", () => {
   it("splits a per-order fee into 50% deposit and the rest", () => {
@@ -40,5 +40,18 @@ describe("service fee gates", () => {
   it("rejects a zero fee", () => {
     const plan = buildPlan("按单", 0);
     assert.equal(canStart("按单", plan).ok, false);
+  });
+
+  it("stops licensed work and unsigned scope before execution", () => {
+    const plan = buildPlan("按单", 4000);
+    plan[0].receivedYuan = 2000;
+    assert.match(serviceAllowed("代理记账").reason, /执业资质/);
+    assert.equal(admissionReady(undefined).ok, false);
+    assert.equal(gateMove("待收款", "执行中", "按单", plan, false, true, true, false, "出口财务包").ok, false);
+    const checks = sopItems("出口财务包").map((id) => ({ id, done: true }));
+    assert.equal(sopReady("出口财务包", checks).ok, true);
+    assert.equal(sopReady("出口财务包", []).ok, false);
+    assert.equal(applyReversal(2000, 1500, "短").ok, false);
+    assert.equal(applyReversal(2000, 1500, "回单重复登记，冲回").ok, true);
   });
 });

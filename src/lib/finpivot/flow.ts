@@ -76,6 +76,56 @@ export function settled(line: { expectedYuan: number; receivedYuan: number }) {
   return line.expectedYuan > 0 && line.receivedYuan >= line.expectedYuan;
 }
 
+export type Admission = {
+  scope: string;
+  ndaAt: string;
+  conflictClear: boolean;
+  authorizedAt: string;
+};
+
+const LICENSED_ONLY = ["代理记账", "审计", "法律意见", "税务申报"];
+
+export function serviceAllowed(product: string) {
+  if (LICENSED_ONLY.some((word) => product.includes(word))) {
+    return { ok: false, reason: "这项涉及执业资质，本所不能直接开工。" };
+  }
+  if (product !== "出口财务包" && product !== "海外项目财务托管" && product !== "结算与清欠专项") {
+    return { ok: false, reason: "服务范围未定，不能开工。" };
+  }
+  return { ok: true, reason: "" };
+}
+
+export function admissionReady(row: Admission | undefined) {
+  if (!row || row.scope.trim().length < 8) return { ok: false, reason: "还没有写清服务范围和边界。" };
+  if (!row.ndaAt) return { ok: false, reason: "保密还没有记下。" };
+  if (!row.conflictClear) return { ok: false, reason: "利益冲突还没有核对。" };
+  if (!row.authorizedAt) return { ok: false, reason: "客户授权还没有记下。" };
+  return { ok: true, reason: "" };
+}
+
+export function sopItems(product: string) {
+  if (product === "出口财务包") return ["三单是否齐全", "差异已列出", "退税只整理不承诺", "汇率只写预警"];
+  if (product === "海外项目财务托管") return ["预算与实际对照", "资金计划滚到下月", "质保金和账龄", "变更有证据索引"];
+  if (product === "结算与清欠专项") return ["逐笔对应", "证据缺口已列出", "争议金额与底稿一致", "确认栏已留"];
+  return [];
+}
+
+export function sopReady(product: string, checks: { id: string; done: boolean }[] | undefined) {
+  const need = sopItems(product);
+  if (need.length === 0) return { ok: false, reason: "没有这条服务的底稿。" };
+  const done = new Set((checks ?? []).filter((item) => item.done).map((item) => item.id));
+  if (need.some((id) => !done.has(id))) return { ok: false, reason: "工作底稿还没勾完。" };
+  return { ok: true, reason: "" };
+}
+
+export function applyReversal(current: number, next: number, reason: string) {
+  if (!Number.isFinite(next)) return { ok: false as const, receivedYuan: current, reason: "冲正金额不正确。" };
+  const yuan = Math.max(0, Math.round(next));
+  if (yuan >= current) return { ok: false as const, receivedYuan: current, reason: "冲正金额不正确。" };
+  if (reason.trim().length < 8) return { ok: false as const, receivedYuan: current, reason: "冲正要写明原因。" };
+  return { ok: true as const, receivedYuan: yuan, reason: "" };
+}
+
 export function canStart(billing: Billing, lines: PayDraft[]) {
   if (lines.length === 0) return { ok: false, reason: "还没有收款计划。" };
   if (billing === "月度") {
@@ -129,14 +179,23 @@ export function gateMove(
   deliverablesDone: boolean,
   contractReady = true,
   reviewOk = true,
+  admitted = true,
+  product = "出口财务包",
+  sopOk = true,
 ) {
   if (!NEXT[status].includes(next)) return { ok: false, reason: `不能从${status}改到${next}。` };
   if (next === "执行中" && !contractReady) return { ok: false, reason: "服务确认书还没双方签完，不能开工。" };
-  if (next === "执行中") return canStart(billing, lines);
+  if (next === "执行中") {
+    const allowed = serviceAllowed(product);
+    if (!allowed.ok) return allowed;
+    if (!admitted) return { ok: false, reason: "还没有客户授权和服务边界。" };
+    return canStart(billing, lines);
+  }
   if (next === "已交付") {
     const delivered = canDeliver(lines, deliverablesDone);
     if (!delivered.ok) return delivered;
     if (!reviewOk) return { ok: false, reason: "交付前要有编制人和另一名复核人。" };
+    if (!sopOk) return { ok: false, reason: "工作底稿还没勾完。" };
     return { ok: true, reason: "" };
   }
   if (next === "待收款" && lines.length === 0) return { ok: false, reason: "先生成收款计划。" };

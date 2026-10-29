@@ -37,11 +37,16 @@ const emptyFirm: Firm = {
   alipayAccount: "",
 };
 import {
+  admissionReady,
   applyReceipt,
+  applyReversal,
   buildPlan,
   deliverableNames,
   gateMove,
   reviewReady,
+  sopItems,
+  sopReady,
+  type Admission,
   type Billing,
   type ClientStatus,
   type OrderStatus,
@@ -121,6 +126,8 @@ export type Order = {
   amountYuan: number;
   status: OrderStatus;
   blockReason: string;
+  admission?: Admission;
+  sop?: { id: string; done: boolean }[];
 };
 
 export type Payment = {
@@ -131,6 +138,7 @@ export type Payment = {
   expectedYuan: number;
   receivedYuan: number;
   method: "" | PayMethod;
+  reversalReason?: string;
 };
 
 export type Deliverable = {
@@ -246,6 +254,9 @@ type OsState = {
   moveOrder: (orderId: string, status: OrderStatus) => void;
   recordReceipt: (paymentId: string, yuan: number, method: "" | PayMethod) => void;
   setReview: (orderId: string, preparer: string, reviewer: string) => void;
+  setAdmission: (orderId: string, patch: Partial<Admission>) => void;
+  toggleSop: (orderId: string, id: string) => void;
+  reverseReceipt: (paymentId: string, yuan: number, reason: string) => void;
   toggleDeliverable: (id: string) => void;
   replaceDesk: (patch: Partial<OsState>) => void;
 };
@@ -663,7 +674,7 @@ export const useOs = create<OsState>()(
             payments: [...payments, ...s.payments.filter((p) => p.orderId !== orderId)],
             deliverables: [...deliverables, ...s.deliverables.filter((d) => d.orderId !== orderId)],
             orders: s.orders.map((o) =>
-              o.id === orderId ? { ...o, status: "待收款", blockReason: "" } : o,
+              o.id === orderId ? { ...o, status: "待收款", blockReason: "", sop: sopItems(order.product).map((id) => ({ id, done: false })) } : o,
             ),
           };
         }),
@@ -677,7 +688,9 @@ export const useOs = create<OsState>()(
           const sheet = (s.agreements ?? []).find((item) => item.orderId === orderId);
           const contractReady = Boolean(sheet?.signedAt && sheet?.firmSignedAt);
           const reviewOk = reviewReady(items).ok;
-          const move = gateMove(order.status, status, order.billing, lines, done, contractReady, reviewOk);
+          const admitted = admissionReady(order.admission).ok;
+          const sopOk = sopReady(order.product, order.sop).ok;
+          const move = gateMove(order.status, status, order.billing, lines, done, contractReady, reviewOk, admitted, order.product, sopOk);
           return {
             orders: s.orders.map((o) =>
               o.id === orderId
@@ -710,6 +723,40 @@ export const useOs = create<OsState>()(
           return {
             deliverables: s.deliverables.map((item) =>
               item.orderId === orderId ? { ...item, preparer: left, reviewer: right, reviewedAt } : item,
+            ),
+          };
+        }),
+      setAdmission: (orderId, patch) =>
+        set((s) => ({
+          orders: s.orders.map((order) => {
+            if (order.id !== orderId) return order;
+            const current = order.admission ?? { scope: "", ndaAt: "", conflictClear: false, authorizedAt: "" };
+            return { ...order, admission: { ...current, ...patch }, blockReason: "" };
+          }),
+        })),
+      toggleSop: (orderId, id) =>
+        set((s) => ({
+          orders: s.orders.map((order) => {
+            if (order.id !== orderId) return order;
+            const sop = (order.sop ?? sopItems(order.product).map((item) => ({ id: item, done: false }))).map((item) =>
+              item.id === id ? { ...item, done: !item.done } : item,
+            );
+            return { ...order, sop };
+          }),
+        })),
+      reverseReceipt: (paymentId, yuan, reason) =>
+        set((s) => {
+          const payment = s.payments.find((item) => item.id === paymentId);
+          if (!payment) return s;
+          const applied = applyReversal(payment.receivedYuan, yuan, reason);
+          return {
+            payments: s.payments.map((item) =>
+              item.id === paymentId && applied.ok
+                ? { ...item, receivedYuan: applied.receivedYuan, reversalReason: reason.trim() }
+                : item,
+            ),
+            orders: s.orders.map((order) =>
+              order.id === payment.orderId ? { ...order, blockReason: applied.ok ? "" : applied.reason } : order,
             ),
           };
         }),

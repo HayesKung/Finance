@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Btn, CanonSelect, Field, Frame, Kicker, Note, inputCls } from "@/components/finpivot/frame";
 import { SignPad } from "@/components/finpivot/sign-pad";
 import { PRODUCTS } from "@/lib/finpivot/copy";
-import { BILLINGS, nextStatuses } from "@/lib/finpivot/flow";
+import { BILLINGS, nextStatuses, sopItems } from "@/lib/finpivot/flow";
 import { useI18n } from "@/lib/finpivot/locale";
 import { moveLabel, openOrdersLine } from "@/lib/finpivot/ui";
 import { PAY_METHODS, agreementPhase, type PayMethod } from "@/lib/finpivot/agreement";
@@ -26,6 +26,9 @@ function OrdersPage() {
   const moveOrder = useOs((s) => s.moveOrder);
   const recordReceipt = useOs((s) => s.recordReceipt);
   const setReview = useOs((s) => s.setReview);
+  const setAdmission = useOs((s) => s.setAdmission);
+  const toggleSop = useOs((s) => s.toggleSop);
+  const reverseReceipt = useOs((s) => s.reverseReceipt);
   const toggleDeliverable = useOs((s) => s.toggleDeliverable);
   const agreements = useOs((s) => s.agreements ?? []);
   const firm = useOs((s) => s.firm);
@@ -44,6 +47,8 @@ function OrdersPage() {
   const [secret, setSecret] = useState<Record<string, string>>({});
   const [role, setRole] = useState<"owner" | "support" | null>(null);
   const [reviewName, setReviewName] = useState<Record<string, { preparer: string; reviewer: string }>>({});
+  const [scopeDraft, setScopeDraft] = useState<Record<string, string>>({});
+  const [reversal, setReversal] = useState<Record<string, { yuan: string; reason: string }>>({});
 
   useEffect(() => {
     let stop = false;
@@ -235,6 +240,41 @@ function OrdersPage() {
                   {project ? ` · ${project.name}` : ""} · {show(o.status)}
                 </p>
                 {o.blockReason ? <p className="mt-2 text-sm text-seal">{show(o.blockReason)}</p> : null}
+                <div className="mt-3 grid gap-3 md:grid-cols-[1fr_auto]">
+                  <Field label={t("scopeLabel")}>
+                    <input
+                      className={inputCls}
+                      value={scopeDraft[o.id] ?? o.admission?.scope ?? ""}
+                      onChange={(e) => setScopeDraft({ ...scopeDraft, [o.id]: e.target.value })}
+                    />
+                  </Field>
+                  <div className="flex flex-wrap gap-2 md:items-end">
+                    <Btn tone="paper" onClick={() => setAdmission(o.id, { scope: scopeDraft[o.id] ?? o.admission?.scope ?? "" })}>
+                      {t("scopeLabel")}
+                    </Btn>
+                    <Btn tone={o.admission?.ndaAt ? "seal" : "paper"} onClick={() => setAdmission(o.id, { ndaAt: new Date().toISOString() })}>
+                      {t("ndaMark")}
+                    </Btn>
+                    <Btn tone={o.admission?.conflictClear ? "seal" : "paper"} onClick={() => setAdmission(o.id, { conflictClear: true })}>
+                      {t("conflictMark")}
+                    </Btn>
+                    <Btn tone={o.admission?.authorizedAt ? "seal" : "paper"} onClick={() => setAdmission(o.id, { authorizedAt: new Date().toISOString() })}>
+                      {t("authorizeMark")}
+                    </Btn>
+                  </div>
+                </div>
+                <ul className="mt-3">
+                  {(o.sop ?? sopItems(o.product).map((id) => ({ id, done: false }))).map((item) => (
+                    <li key={item.id}>
+                      <button type="button" className="flex items-center gap-3 py-1 text-left text-sm" onClick={() => toggleSop(o.id, item.id)}>
+                        <span className={`inline-flex h-6 w-6 items-center justify-center border text-xs ${item.done ? "border-seal bg-seal text-seal-ink" : "border-rule"}`}>
+                          {item.done ? "✓" : ""}
+                        </span>
+                        {item.id}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
                 {sheet ? (
                   <div className="mt-3 border border-rule p-3">
                     <p className="text-sm">{sheet.ref} · {show(agreementPhase(sheet, prepaid))}</p>
@@ -323,6 +363,23 @@ function OrdersPage() {
                         >
                           {t("register")}
                         </Btn>
+                        <input
+                          className={inputCls}
+                          value={reversal[line.id]?.reason ?? ""}
+                          placeholder={t("reversalReason")}
+                          onChange={(e) => setReversal({ ...reversal, [line.id]: { yuan: reversal[line.id]?.yuan ?? draftPay[line.id] ?? "", reason: e.target.value } })}
+                        />
+                        <Btn
+                          tone="paper"
+                          onClick={() => {
+                            const row = reversal[line.id];
+                            const yuan = Number(row?.yuan || draftPay[line.id] || "");
+                            if (!row?.reason || !yuan) return;
+                            reverseReceipt(line.id, yuan, row.reason);
+                          }}
+                        >
+                          {t("reversalSave")}
+                        </Btn>
                       </li>
                     ))}
                   </ul>
@@ -344,11 +401,11 @@ function OrdersPage() {
                     <Field label={t("preparer")}>
                       <input
                         className={inputCls}
-                        value={reviewName[order.id]?.preparer ?? items[0]?.preparer ?? ""}
+                        value={reviewName[o.id]?.preparer ?? items[0]?.preparer ?? ""}
                         onChange={(e) =>
                           setReviewName({
                             ...reviewName,
-                            [order.id]: { preparer: e.target.value, reviewer: reviewName[order.id]?.reviewer ?? items[0]?.reviewer ?? "" },
+                            [o.id]: { preparer: e.target.value, reviewer: reviewName[o.id]?.reviewer ?? items[0]?.reviewer ?? "" },
                           })
                         }
                       />
@@ -356,11 +413,11 @@ function OrdersPage() {
                     <Field label={t("reviewer")}>
                       <input
                         className={inputCls}
-                        value={reviewName[order.id]?.reviewer ?? items[0]?.reviewer ?? ""}
+                        value={reviewName[o.id]?.reviewer ?? items[0]?.reviewer ?? ""}
                         onChange={(e) =>
                           setReviewName({
                             ...reviewName,
-                            [order.id]: { reviewer: e.target.value, preparer: reviewName[order.id]?.preparer ?? items[0]?.preparer ?? "" },
+                            [o.id]: { reviewer: e.target.value, preparer: reviewName[o.id]?.preparer ?? items[0]?.preparer ?? "" },
                           })
                         }
                       />
@@ -368,8 +425,8 @@ function OrdersPage() {
                     <Btn
                       tone="paper"
                       onClick={() => {
-                        const row = reviewName[order.id] ?? { preparer: items[0]?.preparer ?? "", reviewer: items[0]?.reviewer ?? "" };
-                        setReview(order.id, row.preparer, row.reviewer);
+                        const row = reviewName[o.id] ?? { preparer: items[0]?.preparer ?? "", reviewer: items[0]?.reviewer ?? "" };
+                        setReview(o.id, row.preparer, row.reviewer);
                       }}
                     >
                       {t("reviewSave")}

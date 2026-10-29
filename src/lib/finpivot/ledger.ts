@@ -1,10 +1,13 @@
-import { gateMove, reviewReady, type Billing, type OrderStatus, type PayKind } from "./flow.ts";
+import { admissionReady, gateMove, reviewReady, serviceAllowed, sopReady, type Admission, type Billing, type OrderStatus, type PayKind } from "./flow.ts";
 
 export type DeskOrder = {
   id: string;
   status: OrderStatus;
   billing: Billing;
   amountYuan: number;
+  product?: string;
+  admission?: Admission;
+  sop?: { id: string; done: boolean }[];
 };
 
 export type DeskPay = {
@@ -13,6 +16,7 @@ export type DeskPay = {
   kind: PayKind;
   expectedYuan: number;
   receivedYuan: number;
+  reversalReason?: string;
 };
 
 export type DeskItem = {
@@ -46,13 +50,26 @@ export function diffDesk(prev: DeskBody, next: DeskBody) {
     const done = items.length > 0 && items.every((item) => item.done);
     const sheet = (next.agreements ?? []).find((item) => item.orderId === order.id);
     const contractReady = Boolean(sheet?.signedAt && sheet?.firmSignedAt);
-    const move = gateMove(before.status, order.status, order.billing, lines, done, contractReady, reviewReady(items).ok);
+    const product = order.product || before.product || "";
+    const admitted = serviceAllowed(product).ok && admissionReady(order.admission).ok;
+    const move = gateMove(
+      before.status,
+      order.status,
+      order.billing,
+      lines,
+      done,
+      contractReady,
+      reviewReady(items).ok,
+      admitted,
+      product,
+      sopReady(product, order.sop).ok,
+    );
     if (!move.ok) return move;
   }
   const prevPay = new Map(prev.payments.map((line) => [line.id, line]));
   for (const line of next.payments) {
     const before = prevPay.get(line.id);
-    if (before && line.receivedYuan < before.receivedYuan) {
+    if (before && line.receivedYuan < before.receivedYuan && (line.reversalReason?.trim().length ?? 0) < 8) {
       return { ok: false, reason: "实收不能直接改小。冲正要单独记录原因。" };
     }
   }
