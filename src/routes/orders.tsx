@@ -436,6 +436,7 @@ function OrdersPage() {
                   </ul>
                 ) : null}
                 {items.length > 0 ? (
+                  <>
                   <ul className="mt-2">
                     {items.map((item) => (
                       <li key={item.id}>
@@ -483,6 +484,7 @@ function OrdersPage() {
                       {t("reviewSave")}
                     </Btn>
                   </div>
+                  </>
                 ) : null}
               </li>
             );
