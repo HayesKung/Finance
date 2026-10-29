@@ -101,8 +101,16 @@ export function canDeliver(lines: PayDraft[], deliverablesDone: boolean) {
   return { ok: true, reason: "" };
 }
 
-export function gateMove(status: OrderStatus, next: OrderStatus, billing: Billing, lines: PayDraft[], deliverablesDone: boolean) {
+export function gateMove(
+  status: OrderStatus,
+  next: OrderStatus,
+  billing: Billing,
+  lines: PayDraft[],
+  deliverablesDone: boolean,
+  contractReady = true,
+) {
   if (!NEXT[status].includes(next)) return { ok: false, reason: `不能从${status}改到${next}。` };
+  if (next === "执行中" && !contractReady) return { ok: false, reason: "服务确认书还没双方签完，不能开工。" };
   if (next === "执行中") return canStart(billing, lines);
   if (next === "已交付") return canDeliver(lines, deliverablesDone);
   if (next === "待收款" && lines.length === 0) return { ok: false, reason: "先生成收款计划。" };

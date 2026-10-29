@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Btn, Field, Frame, Kicker, Note, inputCls } from "@/components/finpivot/frame";
-import { agreementPhase } from "@/lib/finpivot/agreement";
+import { agreementPhase, bothSigned, contractBody } from "@/lib/finpivot/agreement";
 import { useI18n } from "@/lib/finpivot/locale";
 import { useOs } from "@/lib/finpivot/store";
 
@@ -16,10 +16,12 @@ function SignPage() {
   const deliverables = useOs((s) => s.deliverables);
   const signAgreement = useOs((s) => s.signAgreement);
   const claimPrepaid = useOs((s) => s.claimPrepaid);
+  const firm = useOs((s) => s.firm);
   const [ref, setRef] = useState("");
   const [name, setName] = useState("");
   const [consent, setConsent] = useState(false);
   const [miss, setMiss] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     const fromUrl = new URLSearchParams(window.location.search).get("ref");
@@ -33,6 +35,25 @@ function SignPage() {
   const due = lines[0];
   const settled = !!due && due.expectedYuan > 0 && due.receivedYuan >= due.expectedYuan;
   const items = sheet ? deliverables.filter((item) => item.orderId === sheet.orderId) : [];
+  const ready = sheet ? bothSigned(sheet) : false;
+  const account = firm?.payeeAccount?.trim() ?? "";
+  const text = sheet && order && due
+    ? contractBody({
+        ref: sheet.ref,
+        company: client?.company ?? "",
+        firmName: firm?.legalName ?? "",
+        product: show(order.product),
+        title: order.title,
+        billing: show(order.billing),
+        amountYuan: order.amountYuan,
+        dueLabel: show(due.label),
+        dueYuan: due.expectedYuan,
+        deliverables: items.map((item) => show(item.name)),
+        payeeName: ready ? firm?.payeeName ?? "" : "",
+        payeeBank: ready ? firm?.payeeBank ?? "" : "",
+        payeeAccount: ready ? account : "",
+      })
+    : "";
 
   return (
     <Frame>
@@ -64,33 +85,43 @@ function SignPage() {
           <p className="font-serif text-3xl tabular-nums">{yuan(due.expectedYuan)}</p>
           <p className="mt-1 text-sm text-muted">{show(due.label)} · {t("fee")} {yuan(order.amountYuan)}</p>
           <p className="mt-4 text-sm text-muted">{t("signScope")}</p>
-          <ul className="mt-1 list-disc pl-5 text-sm leading-relaxed">
+          <pre className="mt-2 whitespace-pre-wrap border border-rule bg-paper-2 p-4 text-sm leading-relaxed">{text}</pre>
+          <div className="mt-3">
+            <Btn
+              tone="paper"
+              onClick={() => {
+                void navigator.clipboard?.writeText(text).then(() => {
+                  setCopied(true);
+                });
+              }}
+            >
+              {copied ? t("signCopied") : t("signCopy")}
+            </Btn>
+          </div>
+          <ul className="mt-3 list-disc pl-5 text-sm leading-relaxed">
             {items.map((item) => (
               <li key={item.id}>{show(item.name)}</li>
             ))}
           </ul>
-          <div className="mt-4 border-t border-rule pt-4">
-            {sheet.payeeAccount.trim() ? (
-              <>
-                <p className="text-sm text-muted">{t("signPayee")}</p>
-                <p className="mt-1 text-sm">{sheet.payeeName}</p>
-                <p className="text-sm">{sheet.payeeBank}</p>
-                <p className="text-sm">{sheet.payeeAccount}</p>
-              </>
-            ) : (
-              <p className="text-sm text-seal">{t("signPayeeMissing")}</p>
-            )}
-          </div>
           {sheet.signedAt ? (
-            <div className="mt-4">
+            <div className="mt-4 border-t border-rule pt-4">
               <p className="text-sm">{t("signSigned")} · {sheet.signedName}</p>
-              {sheet.claimedAt ? (
-                <p className="mt-2 text-sm text-muted">{t("signClaimed")}</p>
-              ) : sheet.payeeAccount.trim() ? (
+              {sheet.firmSignedAt ? <p className="mt-1 text-sm">{t("countersign")} · {sheet.firmSigner}</p> : <p className="mt-2 text-sm text-seal">{t("signWaitFirm")}</p>}
+              {ready && !account ? <p className="mt-2 text-sm text-seal">{t("signPayeeMissing")}</p> : null}
+              {ready && account ? (
+                <div className="mt-3">
+                  <p className="text-sm text-muted">{t("signPayee")}</p>
+                  <p className="mt-1 text-sm">{firm?.payeeName}</p>
+                  <p className="text-sm">{firm?.payeeBank}</p>
+                  <p className="text-sm">{firm?.payeeAccount}</p>
+                </div>
+              ) : null}
+              {ready && account && !sheet.claimedAt ? (
                 <div className="mt-3">
                   <Btn onClick={() => claimPrepaid(sheet.ref)}>{t("signClaim")}</Btn>
                 </div>
               ) : null}
+              {sheet.claimedAt ? <p className="mt-2 text-sm text-muted">{t("signClaimed")}</p> : null}
             </div>
           ) : (
             <form

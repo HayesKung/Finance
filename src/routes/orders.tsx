@@ -23,7 +23,9 @@ function OrdersPage() {
   const recordReceipt = useOs((s) => s.recordReceipt);
   const toggleDeliverable = useOs((s) => s.toggleDeliverable);
   const agreements = useOs((s) => s.agreements ?? []);
-  const setPayee = useOs((s) => s.setPayee);
+  const firm = useOs((s) => s.firm);
+  const setFirm = useOs((s) => s.setFirm);
+  const countersign = useOs((s) => s.countersign);
   const [clientId, setClientId] = useState("");
   const [projectId, setProjectId] = useState("");
   const [product, setProduct] = useState<Product>("出口财务包");
@@ -50,6 +52,27 @@ function OrdersPage() {
       </ol>
       <p className="mt-4 text-sm text-muted">{openOrdersLine(locale, open.length, yuan(outstanding))}</p>
       <p className="mt-2 text-sm text-muted">{t("fxRule")}</p>
+      <div className="mt-6">
+        <Kicker n="11">{t("firmKicker")}</Kicker>
+        <Note>{t("firmNote")}</Note>
+        <div className="mt-3 grid gap-3 md:grid-cols-3">
+          <Field label={t("firmLegal")}>
+            <input className={inputCls} value={firm?.legalName ?? ""} onChange={(e) => setFirm({ legalName: e.target.value })} />
+          </Field>
+          <Field label={t("firmSigner")}>
+            <input className={inputCls} value={firm?.signerName ?? ""} onChange={(e) => setFirm({ signerName: e.target.value })} />
+          </Field>
+          <Field label={t("payeeName")}>
+            <input className={inputCls} value={firm?.payeeName ?? ""} onChange={(e) => setFirm({ payeeName: e.target.value })} />
+          </Field>
+          <Field label={t("payeeBank")}>
+            <input className={inputCls} value={firm?.payeeBank ?? ""} onChange={(e) => setFirm({ payeeBank: e.target.value })} />
+          </Field>
+          <Field label={t("payeeAccount")}>
+            <input className={inputCls} value={firm?.payeeAccount ?? ""} onChange={(e) => setFirm({ payeeAccount: e.target.value })} />
+          </Field>
+        </div>
+      </div>
 
       <div className="mt-6 grid gap-3 md:grid-cols-3">
         <Field label={t("client")}>
@@ -130,20 +153,16 @@ function OrdersPage() {
                   <div className="mt-3 border border-rule p-3">
                     <p className="text-sm">{sheet.ref} · {show(agreementPhase(sheet, prepaid))}</p>
                     {sheet.signedName ? <p className="mt-1 text-sm text-muted">{t("signSigned")} · {sheet.signedName}</p> : null}
+                    {sheet.firmSignedAt ? <p className="mt-1 text-sm text-muted">{t("countersign")} · {sheet.firmSigner}</p> : null}
                     <a className="mt-2 inline-flex h-11 items-center text-sm underline decoration-rule underline-offset-4" href={`/sign?ref=${encodeURIComponent(sheet.ref)}`}>
                       {t("openSign")}
                     </a>
-                    <div className="mt-3 grid gap-2 md:grid-cols-3">
-                      <Field label={t("payeeName")}>
-                        <input className={inputCls} value={sheet.payeeName} onChange={(e) => setPayee(sheet.id, { payeeName: e.target.value })} />
-                      </Field>
-                      <Field label={t("payeeBank")}>
-                        <input className={inputCls} value={sheet.payeeBank} onChange={(e) => setPayee(sheet.id, { payeeBank: e.target.value })} />
-                      </Field>
-                      <Field label={t("payeeAccount")}>
-                        <input className={inputCls} value={sheet.payeeAccount} onChange={(e) => setPayee(sheet.id, { payeeAccount: e.target.value })} />
-                      </Field>
-                    </div>
+                    {sheet.signedAt && !sheet.firmSignedAt ? (
+                      <div className="mt-3">
+                        <Btn onClick={() => countersign(sheet.ref)}>{t("countersign")}</Btn>
+                        {!firm?.signerName?.trim() ? <p className="mt-2 text-sm text-seal">{t("countersignNeed")}</p> : null}
+                      </div>
+                    ) : null}
                   </div>
                 ) : null}
                 <div className="mt-3 flex flex-wrap gap-2">

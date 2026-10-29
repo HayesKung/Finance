@@ -16,6 +16,16 @@ import {
   type Inquiry,
 } from "@/lib/finpivot/inquiry";
 import { makeAgreementRef, type Agreement } from "@/lib/finpivot/agreement";
+
+export type Firm = {
+  legalName: string;
+  signerName: string;
+  payeeName: string;
+  payeeBank: string;
+  payeeAccount: string;
+};
+
+const emptyFirm: Firm = { legalName: "", signerName: "", payeeName: "", payeeBank: "", payeeAccount: "" };
 import {
   buildPlan,
   deliverableNames,
@@ -166,12 +176,15 @@ type OsState = {
   acceptInquiry: (id: string) => void;
   declineInquiry: (id: string) => void;
   agreements: Agreement[];
+  firm: Firm;
+  setFirm: (patch: Partial<Firm>) => void;
   quoteInquiry: (
     inquiryId: string,
     row: { product: Product; billing: Billing; title: string; amountYuan: number },
   ) => string;
   setPayee: (id: string, patch: Partial<Pick<Agreement, "payeeName" | "payeeBank" | "payeeAccount">>) => void;
   signAgreement: (ref: string, name: string) => boolean;
+  countersign: (ref: string) => boolean;
   claimPrepaid: (ref: string) => boolean;
   addLead: (lead: Omit<Lead, "id">) => void;
   updateLead: (id: string, patch: Partial<Lead>) => void;
@@ -284,6 +297,8 @@ export const useOs = create<OsState>()(
       payments: [],
       deliverables: [],
       inquiries: [],
+      firm: emptyFirm,
+      setFirm: (patch) => set((s) => ({ firm: { ...emptyFirm, ...s.firm, ...patch } })),
       addInquiry: (row) => {
         const now = new Date();
         const id = uid();
@@ -376,6 +391,8 @@ export const useOs = create<OsState>()(
             payeeAccount: "",
             signedName: "",
             signedAt: "",
+            firmSigner: "",
+            firmSignedAt: "",
             claimedAt: "",
           };
           return {
@@ -421,11 +438,27 @@ export const useOs = create<OsState>()(
         });
         return ok;
       },
+      countersign: (ref) => {
+        let ok = false;
+        set((s) => {
+          const signer = (s.firm ?? emptyFirm).signerName.trim();
+          const sheet = (s.agreements ?? []).find((item) => item.ref === ref);
+          if (!sheet || !sheet.signedAt || sheet.firmSignedAt || !signer) return s;
+          ok = true;
+          return {
+            agreements: s.agreements.map((item) =>
+              item.ref === ref ? { ...item, firmSigner: signer, firmSignedAt: new Date().toISOString() } : item,
+            ),
+          };
+        });
+        return ok;
+      },
       claimPrepaid: (ref) => {
         let ok = false;
         set((s) => {
+          const account = (s.firm ?? emptyFirm).payeeAccount.trim();
           const sheet = (s.agreements ?? []).find((item) => item.ref === ref);
-          if (!sheet || !sheet.signedAt || !sheet.payeeAccount.trim() || sheet.claimedAt) return s;
+          if (!sheet || !sheet.signedAt || !sheet.firmSignedAt || !account || sheet.claimedAt) return s;
           ok = true;
           return {
             agreements: s.agreements.map((item) =>
@@ -576,7 +609,9 @@ export const useOs = create<OsState>()(
           const lines = s.payments.filter((p) => p.orderId === orderId);
           const items = s.deliverables.filter((d) => d.orderId === orderId);
           const done = items.length > 0 && items.every((d) => d.done);
-          const move = gateMove(order.status, status, order.billing, lines, done);
+          const sheet = (s.agreements ?? []).find((item) => item.orderId === orderId);
+          const contractReady = Boolean(sheet?.signedAt && sheet?.firmSignedAt);
+          const move = gateMove(order.status, status, order.billing, lines, done, contractReady);
           return {
             orders: s.orders.map((o) =>
               o.id === orderId

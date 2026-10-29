@@ -27,6 +27,7 @@ describe("service fee gates", () => {
     assert.equal(settled(plan[0]), false);
     plan[0].receivedYuan = 12000;
     assert.equal(gateMove("待收款", "执行中", "月度", plan, false).ok, true);
+    assert.equal(gateMove("待收款", "执行中", "月度", plan, false, false).reason, "服务确认书还没双方签完，不能开工。");
     assert.equal(gateMove("执行中", "已交付", "月度", plan, false).reason.length > 0, true);
   });
 
