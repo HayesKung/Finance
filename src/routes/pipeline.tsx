@@ -48,6 +48,7 @@ function PipelinePage() {
   const removeLead = useOs((s) => s.removeLead);
   const promoteLead = useOs((s) => s.promoteLead);
   const setQualification = useOs((s) => s.setQualification);
+  const setDiagnosis = useOs((s) => s.setDiagnosis);
   const clients = useOs((s) => s.clients);
   const orders = useOs((s) => s.orders);
   const importLeads = useOs((s) => s.importLeads);
@@ -56,6 +57,7 @@ function PipelinePage() {
   const removeOutreach = useOs((s) => s.removeOutreach);
   const [form, setForm] = useState(empty);
   const [reasonDraft, setReasonDraft] = useState<Record<string, string>>({});
+  const [diagnosisDraft, setDiagnosisDraft] = useState<Record<string, string>>({});
   const [q, setQ] = useState("");
   const [stage, setStage] = useState<Stage | "全部">("全部");
   const [warn, setWarn] = useState("");
@@ -359,6 +361,13 @@ function PipelinePage() {
                   value={reasonDraft[l.id] ?? l.qualification?.reason ?? ""}
                   placeholder={t("qualifyReason")}
                   onChange={(e) => setReasonDraft({ ...reasonDraft, [l.id]: e.target.value })}
+                />
+                <input
+                  className={`${inputCls} mt-2`}
+                  value={diagnosisDraft[l.id] ?? l.diagnosis ?? ""}
+                  placeholder={t("diagnosisNote")}
+                  onChange={(e) => setDiagnosisDraft({ ...diagnosisDraft, [l.id]: e.target.value })}
+                  onBlur={(e) => setDiagnosis(l.id, e.target.value)}
                 />
               </div>
               <div className="flex flex-wrap items-start gap-2 md:col-span-4">

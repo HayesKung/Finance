@@ -9,6 +9,7 @@ export type DeskOrder = {
   admission?: Admission;
   sop?: { id: string; done: boolean }[];
   handoff?: Handoff;
+  changeNote?: string;
 };
 
 export type DeskPay = {
@@ -42,11 +43,20 @@ export type DeskBody = {
   agreements?: DeskAgreement[];
 };
 
-export function diffDesk(prev: DeskBody, next: DeskBody) {
+export function diffDesk(prev: DeskBody, next: DeskBody, role: "owner" | "support" = "owner") {
+  const refs = next.payments.map((line) => line.receiptRef?.trim() ?? "").filter((ref) => ref.length >= 4);
+  if (new Set(refs).size !== refs.length) return { ok: false, reason: "同一回单号不能用两次。" };
   const prevOrders = new Map(prev.orders.map((order) => [order.id, order]));
   for (const order of next.orders) {
     const before = prevOrders.get(order.id);
+    if (before && before.amountYuan !== order.amountYuan) {
+      if (role !== "owner") return { ok: false, reason: "改价只有负责人能做。" };
+      if ((order.changeNote?.trim().length ?? 0) < 8) return { ok: false, reason: "改价要写明原因。" };
+      const received = next.payments.filter((line) => line.orderId === order.id).reduce((sum, line) => sum + line.receivedYuan, 0);
+      if (received > 0) return { ok: false, reason: "已有实收，不能直接改价。" };
+    }
     if (!before || before.status === order.status) continue;
+    if (order.status === "已交付" && role !== "owner") return { ok: false, reason: "交付确认只有负责人能做。" };
     const lines = next.payments.filter((line) => line.orderId === order.id);
     const items = next.deliverables.filter((item) => item.orderId === order.id);
     const done = items.length > 0 && items.every((item) => item.done);
@@ -72,6 +82,9 @@ export function diffDesk(prev: DeskBody, next: DeskBody) {
   const prevPay = new Map(prev.payments.map((line) => [line.id, line]));
   for (const line of next.payments) {
     const before = prevPay.get(line.id);
+    if (before && line.receivedYuan !== before.receivedYuan && role !== "owner") {
+      return { ok: false, reason: "实收只有负责人能核对。" };
+    }
     if (before && line.receivedYuan > before.receivedYuan && (line.receiptRef?.trim().length ?? 0) < 4) {
       return { ok: false, reason: "实收增加要记下回单号。" };
     }

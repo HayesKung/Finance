@@ -138,6 +138,21 @@ export type Handoff = {
   closeoutNote: string;
 };
 
+export function diagnosisReady(note: string | undefined) {
+  if ((note?.trim().length ?? 0) < 8) return { ok: false, reason: "还没有诊断出的风险要点。" };
+  return { ok: true, reason: "" };
+}
+
+export function revisePrice(input: { status: OrderStatus; nextYuan: number; note: string; received: number }) {
+  if (input.status === "执行中" || input.status === "待尾款" || input.status === "已交付" || input.status === "已取消") {
+    return { ok: false as const, amountYuan: 0, reason: "已经开工或交付的单，不能直接改价。" };
+  }
+  if (input.received > 0) return { ok: false as const, amountYuan: 0, reason: "已有实收，不能直接改价。" };
+  if (!Number.isFinite(input.nextYuan) || Math.round(input.nextYuan) <= 0) return { ok: false as const, amountYuan: 0, reason: "金额要大于 0。" };
+  if (input.note.trim().length < 8) return { ok: false as const, amountYuan: 0, reason: "改价要写明原因。" };
+  return { ok: true as const, amountYuan: Math.round(input.nextYuan), reason: "" };
+}
+
 export function qualifyReady(row: Qualification | undefined) {
   if (!row || (row.fit !== "适合" && row.fit !== "不适合") || !row.at) return { ok: false, reason: "还没有资格判断。" };
   if (row.reason.trim().length < 8) return { ok: false, reason: "资格判断要写明原因。" };

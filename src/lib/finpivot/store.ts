@@ -42,10 +42,12 @@ import {
   applyReversal,
   buildPlan,
   deliverableNames,
+  diagnosisReady,
   gateMove,
   handoffReady,
   qualifyReady,
   reviewReady,
+  revisePrice,
   sopItems,
   sopReady,
   type Admission,
@@ -80,6 +82,7 @@ export type Lead = {
   consentPrivate: boolean;
   privateContact: string;
   qualification?: Qualification;
+  diagnosis?: string;
   block?: string;
 };
 
@@ -135,6 +138,7 @@ export type Order = {
   admission?: Admission;
   sop?: { id: string; done: boolean }[];
   handoff?: Handoff;
+  changeNote?: string;
 };
 
 export type Payment = {
@@ -255,6 +259,8 @@ type OsState = {
   removeClient: (id: string) => void;
   promoteLead: (leadId: string) => void;
   setQualification: (leadId: string, patch: Partial<Qualification>) => void;
+  setDiagnosis: (leadId: string, note: string) => void;
+  reviseAmount: (orderId: string, yuan: number, note: string) => void;
   addProject: (row: Omit<Project, "id">) => void;
   updateProject: (id: string, patch: Partial<Project>) => void;
   removeProject: (id: string) => void;
@@ -398,6 +404,13 @@ export const useOs = create<OsState>()(
           if (!inq || inq.status !== "已转入名单" || !inq.leadId) return s;
           const lead = s.leads.find((item) => item.id === inq.leadId);
           if (!lead || !row.title.trim() || row.amountYuan <= 0 || row.product === "未定") return s;
+          const diagnosis = diagnosisReady(lead.diagnosis);
+          const fit = qualifyReady(lead.qualification);
+          if (!diagnosis.ok || !fit.ok) {
+            return {
+              leads: s.leads.map((item) => (item.id === lead.id ? { ...item, block: diagnosis.ok ? fit.reason : diagnosis.reason } : item)),
+            };
+          }
           const found = s.clients.find((item) => item.leadId === lead.id);
           const clientId = found?.id ?? uid();
           const clients = found
@@ -646,6 +659,31 @@ export const useOs = create<OsState>()(
             return { ...lead, qualification, block: "" };
           }),
         })),
+      setDiagnosis: (leadId, note) =>
+        set((s) => ({
+          leads: s.leads.map((lead) => (lead.id === leadId ? { ...lead, diagnosis: note, block: "" } : lead)),
+        })),
+      reviseAmount: (orderId, yuan, note) =>
+        set((s) => {
+          const order = s.orders.find((item) => item.id === orderId);
+          if (!order) return s;
+          const received = s.payments.filter((item) => item.orderId === orderId).reduce((sum, item) => sum + item.receivedYuan, 0);
+          const revised = revisePrice({ status: order.status, nextYuan: yuan, note, received });
+          if (!revised.ok) {
+            return { orders: s.orders.map((item) => (item.id === orderId ? { ...item, blockReason: revised.reason } : item)) };
+          }
+          const orders = s.orders.map((item) =>
+            item.id === orderId ? { ...item, amountYuan: revised.amountYuan, changeNote: note.trim(), blockReason: "" } : item,
+          );
+          if (order.status !== "待收款") return { orders };
+          const payments = buildPlan(order.billing, revised.amountYuan).map((line) => ({
+            ...line,
+            id: uid(),
+            orderId,
+            method: "" as const,
+          }));
+          return { orders, payments: [...payments, ...s.payments.filter((item) => item.orderId !== orderId)] };
+        }),
       addProject: (row) => set((s) => ({ projects: [{ ...row, id: uid() }, ...s.projects] })),
       updateProject: (id, patch) =>
         set((s) => ({

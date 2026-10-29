@@ -171,6 +171,14 @@ const EN: Record<string, string> = {
   "收尾对账还没写。": "The close-out reconciliation is not written.",
   "交付版本、客户确认或收尾对账还不齐。": "Delivery version, client confirmation, or close-out is missing.",
   "实收增加要记下回单号。": "A receipt increase needs the voucher number.",
+  "还没有诊断出的风险要点。": "The diagnosis has no risk point yet.",
+  "已经开工或交付的单，不能直接改价。": "A started or delivered order cannot be repriced directly.",
+  "已有实收，不能直接改价。": "Money already recorded, so the price cannot be changed directly.",
+  "改价要写明原因。": "A price change needs a reason.",
+  "改价只有负责人能做。": "Only the principal can change the price.",
+  "同一回单号不能用两次。": "The same voucher number cannot be used twice.",
+  "实收只有负责人能核对。": "Only the principal can confirm money received.",
+  "交付确认只有负责人能做。": "Only the principal can confirm delivery.",
 };
 
 const ZH = new Map(Object.entries(EN).map(([zh, en]) => [en.toLowerCase(), zh]));

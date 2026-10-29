@@ -78,7 +78,7 @@ export const saveDesk = createServerFn({ method: "POST" })
       if (have !== data.version) throw new Error("台账已被另一边更新，请重新载入。");
       const prev = current[0] ? parseDesk(current[0].body) : { orders: [], payments: [], deliverables: [], agreements: [] };
       if (!prev) throw new Error("台账不正确");
-      const move = diffDesk(prev, parsed);
+      const move = diffDesk(prev, parsed, role);
       if (!move.ok) throw new Error(move.reason);
       const nextVersion = have + 1;
       await query(

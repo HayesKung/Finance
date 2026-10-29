@@ -75,4 +75,20 @@ describe("server desk checks", () => {
     assert.equal(diffDesk(open, closed).ok, false);
     assert.equal(handoffReady(running.handoff).ok, false);
   });
+
+  it("stops a reused voucher, a support sign-off, and a price change after money arrived", () => {
+    const prev = { orders: [order], payments: lines, deliverables: [] };
+    const reused = {
+      ...prev,
+      payments: [
+        { ...lines[0], receiptRef: "HZ01" },
+        { ...lines[1], receivedYuan: 100, receiptRef: "HZ01" },
+      ],
+    };
+    assert.match(diffDesk(prev, reused).reason, /两次/);
+    const raised = { ...prev, payments: [{ ...lines[0] }, { ...lines[1], receivedYuan: 100, receiptRef: "HZ02" }] };
+    assert.match(diffDesk(prev, raised, "support").reason, /负责人/);
+    const repriced = { ...prev, orders: [{ ...order, amountYuan: 3000 }] };
+    assert.match(diffDesk(prev, repriced).reason, /改价/);
+  });
 });

@@ -27,6 +27,7 @@ function OrdersPage() {
   const recordReceipt = useOs((s) => s.recordReceipt);
   const setReview = useOs((s) => s.setReview);
   const setHandoff = useOs((s) => s.setHandoff);
+  const reviseAmount = useOs((s) => s.reviseAmount);
   const setAdmission = useOs((s) => s.setAdmission);
   const toggleSop = useOs((s) => s.toggleSop);
   const reverseReceipt = useOs((s) => s.reverseReceipt);
@@ -52,6 +53,8 @@ function OrdersPage() {
   const [reversal, setReversal] = useState<Record<string, { yuan: string; reason: string }>>({});
   const [voucher, setVoucher] = useState<Record<string, string>>({});
   const [closeout, setCloseout] = useState<Record<string, string>>({});
+  const [nextFee, setNextFee] = useState<Record<string, string>>({});
+  const [feeNote, setFeeNote] = useState<Record<string, string>>({});
 
   useEffect(() => {
     let stop = false;
@@ -290,7 +293,7 @@ function OrdersPage() {
                       onBlur={() => setHandoff(o.id, { closeoutNote: closeout[o.id] ?? o.handoff?.closeoutNote ?? "" })}
                     />
                   </Field>
-                  <Btn tone={o.handoff?.customerConfirmedAt ? "seal" : "paper"} onClick={() => setHandoff(o.id, { customerConfirmedAt: new Date().toISOString() })}>
+                  <Btn tone={o.handoff?.customerConfirmedAt ? "seal" : "paper"} onClick={() => role === "owner" && setHandoff(o.id, { customerConfirmedAt: new Date().toISOString() })}>
                     {t("handoffConfirm")}
                   </Btn>
                 </div>
@@ -340,9 +343,26 @@ function OrdersPage() {
                     ) : null}
                   </div>
                 ) : null}
+                {role === "owner" && (o.status === "草稿" || o.status === "待收款") ? (
+                  <div className="mt-3 grid gap-2 md:grid-cols-[8rem_1fr_auto]">
+                    <input className={inputCls} inputMode="numeric" value={nextFee[o.id] ?? ""} placeholder={t("reviseFee")} onChange={(e) => setNextFee({ ...nextFee, [o.id]: e.target.value.replace(/[^\d]/g, "") })} />
+                    <input className={inputCls} value={feeNote[o.id] ?? ""} placeholder={t("reviseReason")} onChange={(e) => setFeeNote({ ...feeNote, [o.id]: e.target.value })} />
+                    <Btn
+                      tone="paper"
+                      onClick={() => {
+                        if (!nextFee[o.id] || !feeNote[o.id]) return;
+                        reviseAmount(o.id, Number(nextFee[o.id]), feeNote[o.id]);
+                      }}
+                    >
+                      {t("reviseFee")}
+                    </Btn>
+                  </div>
+                ) : null}
                 <div className="mt-3 flex flex-wrap gap-2">
                   {o.status === "草稿" ? <Btn onClick={() => issuePlan(o.id)}>{t("issuePlan")}</Btn> : null}
-                  {nextStatuses(o.status).map((st) => (
+                  {nextStatuses(o.status)
+                    .filter((st) => st !== "已交付" || role === "owner")
+                    .map((st) => (
                     <Btn key={st} tone={st === "已取消" ? "paper" : "ink"} onClick={() => moveOrder(o.id, st)}>
                       {moveLabel(locale, show(st))}
                     </Btn>
@@ -360,6 +380,8 @@ function OrdersPage() {
                           {t("received")} {yuan(line.receivedYuan)}
                           {line.method ? <span className="mt-1 block text-muted">{t("savedVia")} {show(line.method)}</span> : null}
                         </p>
+                        {role === "owner" ? (
+                          <>
                         <CanonSelect
                           value={draftMethod[line.id] ?? (sheet?.claimedMethod || "银行转账")}
                           options={PAY_METHODS}
@@ -405,6 +427,10 @@ function OrdersPage() {
                         >
                           {t("reversalSave")}
                         </Btn>
+                          </>
+                        ) : (
+                          <p className="text-sm text-muted md:col-span-3">{t("ownerOnly")}</p>
+                        )}
                       </li>
                     ))}
                   </ul>
