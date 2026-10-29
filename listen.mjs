@@ -2,7 +2,7 @@ import { createServer } from "node:http";
 import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-// 草案没有访问控制。拒绝任何非回环监听。
+// 工作人员会话在应用里。进程仍只监听回环，拒绝任何其他地址。
 const host = "127.0.0.1";
 if (process.env.HOST && process.env.HOST !== host) {
   console.error("拒绝 HOST=" + process.env.HOST + "。鉴权落地前只监听 127.0.0.1。");
@@ -52,7 +52,7 @@ async function assertLoopback(portNumber) {
         console.error("监听不在回环地址上: " + bad.join(", ") + "。已退出。");
         process.exit(1);
       }
-      console.log("核对通过：端口 " + portNumber + " 只在回环地址。AuthProvider 不是访问控制。");
+      console.log("核对通过：端口 " + portNumber + " 只在回环地址。");
       return;
     }
     await new Promise((resolve) => setTimeout(resolve, 100));
@@ -88,14 +88,20 @@ if (!listensOnImport && typeof mod.fetch === "function") {
     const response = await mod.fetch(
       new Request(`http://${host}:${port}${req.url || "/"}`, { method, headers, body }),
     );
-    res.writeHead(response.status, Object.fromEntries(response.headers));
+    res.writeHead(response.status, {
+      ...Object.fromEntries(response.headers),
+      "X-Content-Type-Options": "nosniff",
+      "Referrer-Policy": "same-origin",
+      "X-Frame-Options": "DENY",
+      "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+    });
     res.end(Buffer.from(await response.arrayBuffer()));
   });
   server.listen(port, host, () => {
-    console.log(`http://${host}:${port} 仅本机。AuthProvider 不是访问控制。`);
+    console.log(`http://${host}:${port} 仅本机。`);
     assertLoopback(port);
   });
 } else {
-  console.log(`已加载 ${fileURLToPath(hit)}。只允许 ${host}。AuthProvider 不是访问控制。`);
+  console.log(`已加载 ${fileURLToPath(hit)}。只允许 ${host}。`);
   await assertLoopback(port);
 }

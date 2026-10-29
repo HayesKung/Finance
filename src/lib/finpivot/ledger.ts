@@ -1,4 +1,6 @@
+import { guardDesk } from "./desk-guard.ts";
 import { admissionReady, booksBalance, gateMove, handoffReady, reviewReady, serviceAllowed, sopReady, type Admission, type Billing, type Handoff, type OrderStatus, type PayKind } from "./flow.ts";
+import { receiptChange } from "./journal.ts";
 
 export type DeskOrder = {
   id: string;
@@ -45,6 +47,8 @@ export type DeskBody = {
 };
 
 export function diffDesk(prev: DeskBody, next: DeskBody, role: "owner" | "support" = "owner") {
+  const guarded = guardDesk(prev, next);
+  if (!guarded.ok) return guarded;
   const refs = next.payments.map((line) => line.receiptRef?.trim() ?? "").filter((ref) => ref.length >= 4);
   if (new Set(refs).size !== refs.length) return { ok: false, reason: "同一回单号不能用两次。" };
   for (const before of prev.orders) {
@@ -104,15 +108,17 @@ export function diffDesk(prev: DeskBody, next: DeskBody, role: "owner" | "suppor
   const prevPay = new Map(prev.payments.map((line) => [line.id, line]));
   for (const line of next.payments) {
     const before = prevPay.get(line.id);
-    if (before && line.receivedYuan !== before.receivedYuan && role !== "owner") {
-      return { ok: false, reason: "实收只有负责人能核对。" };
-    }
-    if (before && line.receivedYuan > before.receivedYuan && (line.receiptRef?.trim().length ?? 0) < 4) {
+    const fromYuan = before?.receivedYuan ?? 0;
+    if (line.receivedYuan === fromYuan) continue;
+    if (role !== "owner") return { ok: false, reason: "实收只有负责人能核对。" };
+    if (line.receivedYuan > fromYuan && (line.receiptRef?.trim().length ?? 0) < 4) {
       return { ok: false, reason: "实收增加要记下回单号。" };
     }
-    if (before && line.receivedYuan < before.receivedYuan && (line.reversalReason?.trim().length ?? 0) < 8) {
+    if (line.receivedYuan < fromYuan && (line.reversalReason?.trim().length ?? 0) < 8) {
       return { ok: false, reason: "实收不能直接改小。冲正要单独记录原因。" };
     }
+    const posted = receiptChange(fromYuan, line.receivedYuan, line.expectedYuan);
+    if (!posted.ok) return { ok: false, reason: posted.reason };
   }
   return { ok: true, reason: "" };
 }

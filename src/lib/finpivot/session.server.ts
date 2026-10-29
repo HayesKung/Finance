@@ -1,5 +1,5 @@
-import { getCookie, getRequestIP, setCookie } from "@tanstack/react-start/server";
-import { can, matchRole, readSession, signSession, SESSION_MS, type Role, type StaffAction } from "@/lib/finpivot/access";
+import { getCookie, getRequestHeader, getRequestIP, setCookie } from "@tanstack/react-start/server";
+import { can, matchRole, readSession, resolveDataKey, sameOrigin, signSession, SESSION_MS, type Role, type StaffAction } from "@/lib/finpivot/access";
 
 const COOKIE = "fin_staff";
 
@@ -15,7 +15,32 @@ export function loginConfigured() {
 }
 
 export function dataKey() {
-  return process.env.FINANCE_DATA_KEY?.trim() || sessionSecret();
+  const key = resolveDataKey(process.env.FINANCE_DATA_KEY);
+  if (!key) throw new Error("数据密钥未配置");
+  return key;
+}
+
+function headerValue(name: string) {
+  return getRequestHeader(name) ?? "";
+}
+
+function requestHost() {
+  if (process.env.FINANCE_TRUST_PROXY === "1") {
+    const forwarded = headerValue("x-forwarded-host").split(",")[0]?.trim();
+    if (forwarded) return forwarded;
+  }
+  return headerValue("host");
+}
+
+export function assertSameOrigin() {
+  if (!sameOrigin(headerValue("origin"), requestHost())) throw new Error("来源不被接受");
+}
+
+function cookieSecure() {
+  if (process.env.FINANCE_COOKIE_SECURE === "1") return true;
+  if (process.env.FINANCE_COOKIE_SECURE === "0") return false;
+  if (process.env.FINANCE_TRUST_PROXY === "1" && headerValue("x-forwarded-proto").split(",")[0]?.trim() === "https") return true;
+  return process.env.NODE_ENV === "production";
 }
 
 export function currentRole(): Role | null {
@@ -45,12 +70,12 @@ export function writeSession(role: Role) {
     sameSite: "lax",
     path: "/",
     maxAge: Math.floor(SESSION_MS / 1000),
-    secure: process.env.NODE_ENV === "production",
+    secure: cookieSecure(),
   });
 }
 
 export function clearSession() {
-  setCookie(COOKIE, "", { httpOnly: true, sameSite: "lax", path: "/", maxAge: 0 });
+  setCookie(COOKIE, "", { httpOnly: true, sameSite: "lax", path: "/", maxAge: 0, secure: cookieSecure() });
 }
 
 export function roleForPassword(password: string): Role | null {

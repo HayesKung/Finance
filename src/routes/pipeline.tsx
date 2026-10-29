@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { Btn, CanonSelect, Field, Frame, Kicker, Note, inputCls } from "@/components/finpivot/frame";
+import { ServerInquiries } from "@/components/finpivot/server-inquiries";
 import { OUTREACH_RESULTS, PRODUCTS, SOURCES, STAGES } from "@/lib/finpivot/copy";
 import { canon } from "@/lib/finpivot/glossary";
 import { useI18n } from "@/lib/finpivot/locale";
@@ -8,9 +9,10 @@ import { leadCount } from "@/lib/finpivot/ui";
 import { BILLINGS, evidenceFunnel, type Billing } from "@/lib/finpivot/flow";
 import { needToProduct } from "@/lib/finpivot/inquiry";
 import { pushSheet } from "@/lib/finpivot/publish-client";
+import { requireStaffPage } from "@/lib/finpivot/staff-gate";
 import { useOs, type Lead, type Outreach, type Source, type Stage } from "@/lib/finpivot/store";
 
-export const Route = createFileRoute("/pipeline")({ component: PipelinePage });
+export const Route = createFileRoute("/pipeline")({ beforeLoad: () => requireStaffPage(), component: PipelinePage });
 
 const empty = {
   alias: "",
@@ -139,6 +141,7 @@ function PipelinePage() {
   return (
     <Frame>
       <Kicker n="05">{t("inqKicker")}</Kicker>
+      <ServerInquiries />
       {inquiries.length === 0 ? (
         <Note>{t("inqEmpty")}</Note>
       ) : (

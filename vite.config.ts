@@ -4,7 +4,7 @@ import viteReact from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { nitro } from "nitro/vite";
 
-// 只绑回环地址。这个草案没有访问控制，不要改成 0.0.0.0。
+// 工作人员会话在应用里。进程仍只绑回环地址，不要改成 0.0.0.0。
 export default defineConfig(({ command }) => ({
   server: { host: "127.0.0.1", port: 4173, strictPort: true },
   preview: { host: "127.0.0.1", port: 4174, strictPort: true },

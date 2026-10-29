@@ -7,6 +7,12 @@ import appCss from "../styles.css?url";
 const APP_NAME = "海外项目与出口财务";
 
 export const Route = createRootRoute({
+  headers: () => ({
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "same-origin",
+    "X-Frame-Options": "DENY",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+  }),
   head: () => ({
     meta: [
       { charSet: "utf-8" },

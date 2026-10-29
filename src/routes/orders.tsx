@@ -7,12 +7,13 @@ import { BILLINGS, nextStatuses, sopItems } from "@/lib/finpivot/flow";
 import { useI18n } from "@/lib/finpivot/locale";
 import { moveLabel, openOrdersLine } from "@/lib/finpivot/ui";
 import { PAY_METHODS, agreementPhase, type PayMethod } from "@/lib/finpivot/agreement";
+import { requireStaffPage } from "@/lib/finpivot/staff-gate";
 import { channelStatus, readStaffContract, saveChannel } from "@/lib/finpivot/contract-api";
 import { whoami } from "@/lib/finpivot/staff-api";
 import { pushSheet } from "@/lib/finpivot/publish-client";
 import { useOs, type Order, type Product } from "@/lib/finpivot/store";
 
-export const Route = createFileRoute("/orders")({ component: OrdersPage });
+export const Route = createFileRoute("/orders")({ beforeLoad: () => requireStaffPage(), component: OrdersPage });
 
 function OrdersPage() {
   const { locale, t, show, yuan, copy } = useI18n();
@@ -60,7 +61,7 @@ function OrdersPage() {
     let stop = false;
     void channelStatus()
       .then((status) => {
-        if (!stop) setChannels(status);
+        if (!stop) setChannels({ wechat: status.wechat, alipay: status.alipay, esign: status.esign });
       })
       .catch(() => undefined);
     void whoami()

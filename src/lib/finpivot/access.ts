@@ -60,6 +60,27 @@ export function nextRate(hits: number, windowStart: number, now: number, limit: 
   return { hits: next, windowStart, blocked: next > limit };
 }
 
+export function takeFailure(hits: number, windowStart: number, now: number, limit: number, windowMs: number) {
+  if (now - windowStart >= windowMs) return { hits: 1, windowStart: now, blocked: false };
+  if (hits >= limit) return { hits, windowStart, blocked: true };
+  return { hits: hits + 1, windowStart, blocked: false };
+}
+
+export function sameOrigin(origin: string | null | undefined, host: string | null | undefined) {
+  if (!origin || !host) return false;
+  try {
+    return new URL(origin).host === host.trim();
+  } catch {
+    return false;
+  }
+}
+
+export function resolveDataKey(configured: string | undefined) {
+  const key = configured?.trim() ?? "";
+  if (key.length < 32) return null;
+  return key;
+}
+
 export function sealSecret(plain: string, keyMaterial: string) {
   const key = createHash("sha256").update(keyMaterial).digest();
   const iv = randomBytes(12);

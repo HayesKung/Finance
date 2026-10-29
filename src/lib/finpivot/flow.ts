@@ -242,7 +242,13 @@ export function evidenceFunnel(input: {
   };
 }
 
-export function canStart(billing: Billing, lines: PayDraft[]) {
+export type PayLine = {
+  kind: PayKind;
+  expectedYuan: number;
+  receivedYuan: number;
+};
+
+export function canStart(billing: Billing, lines: PayLine[]) {
   if (lines.length === 0) return { ok: false, reason: "还没有收款计划。" };
   if (billing === "月度") {
     const line = lines.find((l) => l.kind === "预收");
@@ -279,7 +285,7 @@ export function reviewReady(items: { done?: boolean; preparer?: string; reviewer
   return { ok: true, reason: "" };
 }
 
-export function canDeliver(lines: PayDraft[], deliverablesDone: boolean) {
+export function canDeliver(lines: PayLine[], deliverablesDone: boolean) {
   if (!deliverablesDone) return { ok: false, reason: "交付物还没勾完，不能标已交付。" };
   if (lines.length === 0 || lines.some((l) => !settled(l))) {
     return { ok: false, reason: "还有款项未结清，不能标已交付。" };
@@ -291,7 +297,7 @@ export function gateMove(
   status: OrderStatus,
   next: OrderStatus,
   billing: Billing,
-  lines: PayDraft[],
+  lines: PayLine[],
   deliverablesDone: boolean,
   contractReady = true,
   reviewOk = true,

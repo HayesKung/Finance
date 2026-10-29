@@ -40,7 +40,7 @@ describe("server desk checks", () => {
   });
 
   it("rejects delivery when the same person prepares and reviews", () => {
-    const items = [{ orderId: "o1", done: true, preparer: "海", reviewer: "海", reviewedAt: "2026-10-29T00:00:00.000Z" }];
+    const items = [{ id: "d1", orderId: "o1", done: true, preparer: "海", reviewer: "海", reviewedAt: "2026-10-29T00:00:00.000Z" }];
     assert.equal(reviewReady(items).ok, false);
     const ready = [{ ...items[0], reviewer: "支撑" }];
     const sop = sopItems("出口财务包").map((id) => ({ id, done: true }));
@@ -70,10 +70,10 @@ describe("server desk checks", () => {
     assert.equal(diffDesk(prev, withRef).ok, true);
     const sop = sopItems("出口财务包").map((id) => ({ id, done: true }));
     const running = { ...order, status: "执行中" as const, product: "出口财务包", sop };
-    const open = { orders: [running], payments: lines.map((line) => ({ ...line, receivedYuan: 2000 })), deliverables: [{ orderId: "o1", done: true, preparer: "海", reviewer: "支撑", reviewedAt: "2026-10-29T00:00:00.000Z" }] };
+    const open = { orders: [running], payments: lines.map((line) => ({ ...line, receivedYuan: 2000 })), deliverables: [{ id: "d2", orderId: "o1", done: true, preparer: "海", reviewer: "支撑", reviewedAt: "2026-10-29T00:00:00.000Z" }] };
     const closed = { ...open, orders: [{ ...running, status: "已交付" as const }] };
     assert.equal(diffDesk(open, closed).ok, false);
-    assert.equal(handoffReady(running.handoff).ok, false);
+    assert.equal(handoffReady(undefined).ok, false);
   });
 
   it("stops a reused voucher, a support sign-off, and a price change after money arrived", () => {
@@ -95,5 +95,28 @@ describe("server desk checks", () => {
     assert.match(diffDesk(logged, wiped).reason, /不能删/);
     const short = { ...prev, payments: [lines[0]] };
     assert.match(diffDesk(prev, short).reason, /不一致|不能删/);
+  });
+
+  it("rejects cash above the receivable and a fractional amount", () => {
+    const prev = { orders: [order], payments: lines, deliverables: [] };
+    const over = { ...prev, payments: [{ ...lines[0], receivedYuan: 2001, receiptRef: "HZ09" }, lines[1]] };
+    assert.match(diffDesk(prev, over).reason, /高于/);
+    const fraction = { ...prev, payments: [lines[0], { ...lines[1], receivedYuan: 1.5, receiptRef: "HZ10" }] };
+    assert.match(diffDesk(prev, fraction).reason, /金额/);
+  });
+
+  it("rejects a new order that is already running, a duplicate id, and a payment moved onto another order", () => {
+    const prev = { orders: [order], payments: lines, deliverables: [] };
+    const born = { orders: [{ ...order, status: "执行中" as const }], payments: lines, deliverables: [] };
+    assert.match(diffDesk({ orders: [], payments: [], deliverables: [] }, born).reason, /新订单/);
+    const duplicated = { ...prev, orders: [order, { ...order }] };
+    assert.match(diffDesk(prev, duplicated).reason, /重复/);
+    const other = { ...order, id: "o2", status: "草稿" as const };
+    const moved = { orders: [order, other], payments: [{ ...lines[0], orderId: "o2" }, lines[1]], deliverables: [] };
+    assert.match(diffDesk({ ...prev, orders: [order, other] }, moved).reason, /别的订单/);
+    const forged = { ...prev, payments: [lines[0], { ...lines[1], receivedYuan: 100 }] };
+    assert.match(diffDesk({ ...prev, payments: [lines[0]] }, forged).reason, /回单号/);
+    const odd = { ...prev, orders: [{ ...order, status: "已结清" as never }] };
+    assert.match(diffDesk(prev, odd).reason, /状态/);
   });
 });

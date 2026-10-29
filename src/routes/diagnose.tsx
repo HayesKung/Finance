@@ -5,9 +5,10 @@ import { IMPACTS } from "@/lib/finpivot/copy";
 import { canon } from "@/lib/finpivot/glossary";
 import { useI18n } from "@/lib/finpivot/locale";
 import { askedLine } from "@/lib/finpivot/ui";
+import { requireStaffPage } from "@/lib/finpivot/staff-gate";
 import { useOs } from "@/lib/finpivot/store";
 
-export const Route = createFileRoute("/diagnose")({ component: DiagnosePage });
+export const Route = createFileRoute("/diagnose")({ beforeLoad: () => requireStaffPage(), component: DiagnosePage });
 
 function DiagnosePage() {
   const { locale, t, show, copy } = useI18n();

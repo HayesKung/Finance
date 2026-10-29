@@ -5,9 +5,10 @@ import { templateSeeds } from "@/lib/finpivot/copy";
 import { templateSeeds as enSeeds } from "@/lib/finpivot/en-content";
 import { activeBody } from "@/lib/finpivot/glossary";
 import { useI18n } from "@/lib/finpivot/locale";
+import { requireStaffPage } from "@/lib/finpivot/staff-gate";
 import { useOs } from "@/lib/finpivot/store";
 
-export const Route = createFileRoute("/templates")({ component: TemplatesPage });
+export const Route = createFileRoute("/templates")({ beforeLoad: () => requireStaffPage(), component: TemplatesPage });
 
 function TemplatesPage() {
   const { locale, t, copy } = useI18n();

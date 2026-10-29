@@ -1,9 +1,9 @@
-import { Link, useRouterState } from "@tanstack/react-router";
-import { useEffect, useState, type ReactNode } from "react";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { META } from "@/lib/finpivot/copy";
 import { PUBLIC_SITE_LAUNCHED } from "@/lib/finpivot/inquiry";
 import { useI18n } from "@/lib/finpivot/locale";
-import { deskSnapshot, hydrateDesk, useOs } from "@/lib/finpivot/store";
+import { clearDeskCache, deskSnapshot, useOs } from "@/lib/finpivot/store";
 import { loadDesk, loginStaff, logoutStaff, saveDesk, whoami } from "@/lib/finpivot/staff-api";
 import { footerLine } from "@/lib/finpivot/ui";
 
@@ -62,10 +62,10 @@ export function Frame({ children }: { children: ReactNode }) {
   const path = useRouterState({ select: (s) => s.location.pathname });
   const hash = useRouterState({ select: (s) => s.location.hash });
   const publicPage = PUBLIC.has(path);
-  useEffect(() => {
-    hydrateDesk();
-  }, []);
   useRobots(publicPage && PUBLIC_SITE_LAUNCHED);
+  if (path === "/staff/login") {
+    return <div className="min-h-screen bg-paper text-ink"><main className="mx-auto max-w-6xl px-4 py-8">{children}</main></div>;
+  }
   if (publicPage) {
     return (
       <PublicShell path={path} hash={hash}>
@@ -116,7 +116,7 @@ function PublicShell({ path, hash, children }: { path: string; hash: string; chi
       <footer className="border-t border-rule">
         <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-6 text-sm text-muted md:flex-row md:items-center md:justify-between">
           <p>{t("publicFoot")}</p>
-          <Link to="/os" className="inline-flex h-11 items-center text-sm text-muted underline decoration-rule underline-offset-4">
+          <Link to="/staff/login" className="inline-flex h-11 items-center text-sm text-muted underline decoration-rule underline-offset-4">
             {t("staffEntry")}
           </Link>
         </div>
@@ -126,12 +126,14 @@ function PublicShell({ path, hash, children }: { path: string; hash: string; chi
 }
 
 function DeskShell({ path, children }: { path: string; children: ReactNode }) {
+  const navigate = useNavigate();
   const { locale, t } = useI18n();
   const [gate, setGate] = useState<"check" | "in" | "out" | "off">("check");
   const [role, setRole] = useState<"owner" | "support" | null>(null);
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const replaceDesk = useOs((s) => s.replaceDesk);
+  const leaveDesk = useRef(false);
   useEffect(() => {
     let stop = false;
     void whoami()
@@ -156,15 +158,27 @@ function DeskShell({ path, children }: { path: string; children: ReactNode }) {
     let version = 0;
     let ready = false;
     let applying = false;
+    let stop = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
     void loadDesk()
-      .then((row) => {
+      .then(async (row) => {
+        if (stop) return;
         version = row.version;
+        applying = true;
         if (row.version > 0 && row.body) {
-          applying = true;
           replaceDesk(JSON.parse(row.body) as Partial<ReturnType<typeof useOs.getState>>);
-          applying = false;
+        } else {
+          await useOs.persist.rehydrate();
+          if (stop) return;
+          try {
+            const saved = await saveDesk({ data: { version: row.version, body: deskSnapshot() } });
+            if (stop) return;
+            version = saved.version;
+          } catch (reason: unknown) {
+            setError(reason instanceof Error ? reason.message : "台账没有保存");
+          }
         }
+        applying = false;
         ready = true;
       })
       .catch((reason: unknown) => {
@@ -187,8 +201,10 @@ function DeskShell({ path, children }: { path: string; children: ReactNode }) {
       }, 800);
     });
     return () => {
+      stop = true;
       unsub();
       clearTimeout(timer);
+      if (leaveDesk.current) clearDeskCache();
     };
   }, [gate, role, replaceDesk]);
   return (
@@ -211,8 +227,10 @@ function DeskShell({ path, children }: { path: string; children: ReactNode }) {
                   className="inline-flex h-11 items-center border border-rule px-3 text-sm"
                   onClick={() => {
                     void logoutStaff().then(() => {
+                      leaveDesk.current = true;
                       setRole(null);
                       setGate("out");
+                      void navigate({ to: "/staff/login" });
                     });
                   }}
                 >
