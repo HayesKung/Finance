@@ -147,6 +147,35 @@ export type MoneySnapshot = {
   contracts: number;
 };
 
+export function booksBalance(amountYuan: number, status: string, lines: { expectedYuan: number }[]) {
+  if (status === "草稿" || status === "已取消") return { ok: true, reason: "" };
+  const sum = lines.reduce((total, line) => total + line.expectedYuan, 0);
+  if (sum !== amountYuan) return { ok: false, reason: "收款计划合计和订单金额不一致。" };
+  return { ok: true, reason: "" };
+}
+
+export function canForget(
+  orders: { id: string; clientId: string; status: string }[],
+  payments: { orderId: string; expectedYuan: number; receivedYuan: number }[],
+  clientId: string,
+) {
+  const mine = orders.filter((order) => order.clientId === clientId);
+  for (const order of mine) {
+    if (order.status !== "已交付" && order.status !== "已取消") return { ok: false, reason: "还有未收尾的订单，不能销毁联系方式。" };
+    const lines = payments.filter((line) => line.orderId === order.id);
+    if (order.status === "已交付" && lines.some((line) => line.receivedYuan < line.expectedYuan)) {
+      return { ok: false, reason: "款项未结清，不能销毁联系方式。" };
+    }
+  }
+  return { ok: true, reason: "" };
+}
+
+export function monthCloseReady(orders: { status: string }[]) {
+  const open = orders.filter((order) => order.status === "待收款" || order.status === "执行中" || order.status === "待尾款").length;
+  if (open > 0) return { ok: false, reason: `还有 ${open} 张单没到收尾，不能做月结。` };
+  return { ok: true, reason: "" };
+}
+
 export function reportSignoff(input: {
   status: "草稿" | "待小m核验" | "已核验";
   preparer: string | undefined;

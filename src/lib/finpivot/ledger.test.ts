@@ -93,5 +93,7 @@ describe("server desk checks", () => {
     const logged = { ...prev, orders: [{ ...order, priceLog: [{ at: "2026-10-29", fromYuan: 5000, toYuan: 4000, note: "原先写高了" }] }] };
     const wiped = { ...logged, orders: [{ ...order, priceLog: [] }] };
     assert.match(diffDesk(logged, wiped).reason, /不能删/);
+    const short = { ...prev, payments: [lines[0]] };
+    assert.match(diffDesk(prev, short).reason, /不一致|不能删/);
   });
 });

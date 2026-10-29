@@ -1,4 +1,4 @@
-import { admissionReady, gateMove, handoffReady, reviewReady, serviceAllowed, sopReady, type Admission, type Billing, type Handoff, type OrderStatus, type PayKind } from "./flow.ts";
+import { admissionReady, booksBalance, gateMove, handoffReady, reviewReady, serviceAllowed, sopReady, type Admission, type Billing, type Handoff, type OrderStatus, type PayKind } from "./flow.ts";
 
 export type DeskOrder = {
   id: string;
@@ -47,6 +47,18 @@ export type DeskBody = {
 export function diffDesk(prev: DeskBody, next: DeskBody, role: "owner" | "support" = "owner") {
   const refs = next.payments.map((line) => line.receiptRef?.trim() ?? "").filter((ref) => ref.length >= 4);
   if (new Set(refs).size !== refs.length) return { ok: false, reason: "同一回单号不能用两次。" };
+  for (const before of prev.orders) {
+    if (next.orders.some((order) => order.id === before.id)) continue;
+    const received = prev.payments.filter((line) => line.orderId === before.id).reduce((sum, line) => sum + line.receivedYuan, 0);
+    if (received > 0 || before.status === "执行中" || before.status === "已交付") {
+      return { ok: false, reason: "有实收或已开工的订单不能删。" };
+    }
+  }
+  for (const before of prev.payments) {
+    if (!next.payments.some((line) => line.id === before.id) && before.receivedYuan > 0) {
+      return { ok: false, reason: "有实收的收款行不能删。" };
+    }
+  }
   const prevOrders = new Map(prev.orders.map((order) => [order.id, order]));
   for (const order of next.orders) {
     const before = prevOrders.get(order.id);
@@ -59,6 +71,12 @@ export function diffDesk(prev: DeskBody, next: DeskBody, role: "owner" | "suppor
       const received = next.payments.filter((line) => line.orderId === order.id).reduce((sum, line) => sum + line.receivedYuan, 0);
       if (received > 0) return { ok: false, reason: "已有实收，不能直接改价。" };
     }
+    const balance = booksBalance(
+      order.amountYuan,
+      order.status,
+      next.payments.filter((line) => line.orderId === order.id),
+    );
+    if (!balance.ok) return balance;
     if (!before || before.status === order.status) continue;
     if (order.status === "已交付" && role !== "owner") return { ok: false, reason: "交付确认只有负责人能做。" };
     const lines = next.payments.filter((line) => line.orderId === order.id);

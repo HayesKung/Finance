@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { admissionReady, applyReversal, buildPlan, canDeliver, canStart, diagnosisReady, evidenceFunnel, gateMove, handoffReady, qualifyReady, reconcileSnapshot, reportSignoff, revisePrice, serviceAllowed, settled, sopItems, sopReady } from "./flow.ts";
+import { admissionReady, applyReversal, booksBalance, buildPlan, canDeliver, canForget, canStart, diagnosisReady, evidenceFunnel, gateMove, handoffReady, monthCloseReady, qualifyReady, reconcileSnapshot, reportSignoff, revisePrice, serviceAllowed, settled, sopItems, sopReady } from "./flow.ts";
 
 describe("service fee gates", () => {
   it("splits a per-order fee into 50% deposit and the rest", () => {
@@ -72,5 +72,11 @@ describe("service fee gates", () => {
     const shot = { orders: 2, payments: 4, receivedYuan: 8000, contracts: 2 };
     assert.equal(reconcileSnapshot(shot, shot).ok, true);
     assert.match(reconcileSnapshot(shot, { ...shot, receivedYuan: 7000 }).reason, /receivedYuan/);
+    assert.equal(booksBalance(4000, "待收款", [{ expectedYuan: 2000 }, { expectedYuan: 2000 }]).ok, true);
+    assert.equal(booksBalance(4000, "待收款", [{ expectedYuan: 2000 }]).ok, false);
+    assert.equal(canForget([{ id: "o", clientId: "c", status: "执行中" }], [], "c").ok, false);
+    assert.equal(canForget([{ id: "o", clientId: "c", status: "已交付" }], [{ orderId: "o", expectedYuan: 100, receivedYuan: 100 }], "c").ok, true);
+    assert.equal(monthCloseReady([{ status: "草稿" }, { status: "已交付" }]).ok, true);
+    assert.match(monthCloseReady([{ status: "待收款" }]).reason, /月结/);
   });
 });

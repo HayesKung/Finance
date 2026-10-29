@@ -182,6 +182,12 @@ const EN: Record<string, string> = {
   "周报不能由同一个人编写并核验。": "The same person cannot write and verify the weekly note.",
   "周报数字只能是已经发生的笔数。": "Weekly figures must be counts that already happened.",
   "改价记录不能删。": "A price-change record cannot be deleted.",
+  "收款计划合计和订单金额不一致。": "The payment plan does not add up to the order amount.",
+  "有实收或已开工的订单不能删。": "An order with money received, or already started, cannot be deleted.",
+  "有实收的收款行不能删。": "A payment line with money received cannot be deleted.",
+  "还有未收尾的订单，不能销毁联系方式。": "An order is still open, so the contact cannot be destroyed.",
+  "款项未结清，不能销毁联系方式。": "The fee is not settled, so the contact cannot be destroyed.",
+  "有未结束订单或实收，不能删除客户。": "This client still has an open order or money received.",
 };
 
 const ZH = new Map(Object.entries(EN).map(([zh, en]) => [en.toLowerCase(), zh]));

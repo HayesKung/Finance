@@ -32,6 +32,7 @@ function ClientsPage() {
   const addClient = useOs((s) => s.addClient);
   const updateClient = useOs((s) => s.updateClient);
   const removeClient = useOs((s) => s.removeClient);
+  const forgetPrivate = useOs((s) => s.forgetPrivate);
   const addProject = useOs((s) => s.addProject);
   const updateProject = useOs((s) => s.updateProject);
   const removeProject = useOs((s) => s.removeProject);
@@ -145,9 +146,11 @@ function ClientsPage() {
                       onChange={(value) => updateClient(c.id, { status: value as Client["status"] })}
                     />
                     <Btn tone="paper" onClick={() => removeClient(c.id)}>{t("remove")}</Btn>
+                    <Btn tone={c.forgottenAt ? "seal" : "paper"} onClick={() => forgetPrivate(c.id)}>{t("forgetContact")}</Btn>
                   </div>
                 </div>
                 {openOrders > 0 ? <p className="mt-2 text-sm text-muted">{cannotDelete(locale, openOrders)}</p> : null}
+                {c.block ? <p className="mt-2 text-sm text-seal">{show(c.block)}</p> : null}
                 <div className="mt-4 border-t border-rule pt-3">
                   <p className="text-sm text-muted">{t("projects")}</p>
                   <ul className="mt-2">

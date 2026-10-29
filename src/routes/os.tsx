@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Btn, CanonSelect, Field, Frame, Kicker, Note, inputCls, areaCls } from "@/components/finpivot/frame";
 import { META, STAGES } from "@/lib/finpivot/copy";
 import { canon } from "@/lib/finpivot/glossary";
+import { monthCloseReady } from "@/lib/finpivot/flow";
 import { useI18n } from "@/lib/finpivot/locale";
 import { deskHealth } from "@/lib/finpivot/staff-api";
 import { outreachDetail, perMonth, weekProgress } from "@/lib/finpivot/ui";
@@ -20,6 +21,7 @@ function OsPage() {
       </p>
       <Counters />
       <HealthLine />
+      <MonthLine />
       <WeekList />
       <Report />
       <Rhythm />
@@ -95,6 +97,17 @@ function WeekList() {
         ))}
       </ul>
     </section>
+  );
+}
+
+function MonthLine() {
+  const { t, show } = useI18n();
+  const orders = useOs((s) => s.orders);
+  const gate = monthCloseReady(orders);
+  return (
+    <p className="mt-2 text-sm text-muted">
+      {t("monthClose")} · {gate.ok ? t("healthOn") : show(gate.reason)}
+    </p>
   );
 }
 

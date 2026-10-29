@@ -41,6 +41,7 @@ import {
   applyReceipt,
   applyReversal,
   buildPlan,
+  canForget,
   deliverableNames,
   diagnosisReady,
   gateMove,
@@ -111,6 +112,8 @@ export type Client = {
   privateContact: string;
   status: ClientStatus;
   note: string;
+  block?: string;
+  forgottenAt?: string;
 };
 
 export type Project = {
@@ -262,6 +265,7 @@ type OsState = {
   addClient: (row: Omit<Client, "id" | "leadId"> & { leadId?: string }) => void;
   updateClient: (id: string, patch: Partial<Client>) => void;
   removeClient: (id: string) => void;
+  forgetPrivate: (clientId: string) => void;
   promoteLead: (leadId: string) => void;
   setQualification: (leadId: string, patch: Partial<Qualification>) => void;
   setDiagnosis: (leadId: string, note: string) => void;
@@ -641,10 +645,34 @@ export const useOs = create<OsState>()(
         })),
       removeClient: (id) =>
         set((s) => {
-          if (s.orders.some((o) => o.clientId === id && o.status !== "已取消")) return s;
+          const mine = s.orders.filter((order) => order.clientId === id);
+          const received = s.payments
+            .filter((line) => mine.some((order) => order.id === line.orderId))
+            .reduce((sum, line) => sum + line.receivedYuan, 0);
+          if (received > 0 || mine.some((order) => order.status !== "已取消" && order.status !== "草稿")) {
+            return {
+              clients: s.clients.map((client) =>
+                client.id === id ? { ...client, block: "有未结束订单或实收，不能删除客户。" } : client,
+              ),
+            };
+          }
           return {
-            clients: s.clients.filter((c) => c.id !== id),
-            projects: s.projects.filter((p) => p.clientId !== id),
+            clients: s.clients.filter((client) => client.id !== id),
+            projects: s.projects.filter((project) => project.clientId !== id),
+          };
+        }),
+      forgetPrivate: (clientId) =>
+        set((s) => {
+          const gate = canForget(s.orders, s.payments, clientId);
+          const client = s.clients.find((item) => item.id === clientId);
+          if (!client) return s;
+          if (!gate.ok) return { clients: s.clients.map((item) => (item.id === clientId ? { ...item, block: gate.reason } : item)) };
+          const forgottenAt = new Date().toISOString();
+          return {
+            clients: s.clients.map((item) =>
+              item.id === clientId ? { ...item, privateContact: "", publicChannel: "", consentPrivate: false, forgottenAt, block: "" } : item,
+            ),
+            leads: s.leads.map((lead) => (lead.id === client.leadId ? { ...lead, privateContact: "", publicChannel: "" } : lead)),
           };
         }),
       promoteLead: (leadId) =>

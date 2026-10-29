@@ -16,7 +16,7 @@
 | 没有诊断要点或资格判断不能报价建档 | 报价动作会停住 | `store.ts` 调用 `diagnosisReady` / `qualifyReady` |
 | 用真实或合成客户从线索走到复盘 | 纯规则走通了门禁，没有在浏览器或生产库点完 | NOT_VERIFIED |
 | 未授权访问生产接口 | 未对生产主机发包 | NOT_VERIFIED |
-| 周报不能自核；改价记录不能删；恢复后笔数和实收必须一致 | 规则测试通过 | `flow.test.ts`、`ledger.test.ts` |
+| 收款计划必须等于订单金额；有实收或已开工不能删；未收尾不能销毁联系方式 | 规则测试通过 | `flow.test.ts`、`ledger.test.ts` |
 | 备份恢复演练、生产库对账 | 只定了比较规则，没有对生产备份做过 | NOT_VERIFIED |
 | 真实收款、真实交付、续约 | 没有 | NOT_VERIFIED |
 
