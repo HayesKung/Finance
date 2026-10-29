@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { canon, formatYuan, show } from "./glossary.ts";
+import { canon, currencyLine, formatYuan, show } from "./glossary.ts";
 
 describe("locale labels", () => {
   it("shows English for a stored Chinese stage and maps it back", () => {
@@ -14,6 +14,16 @@ describe("locale labels", () => {
   it("keeps yuan in CNY when the screen is English", () => {
     assert.equal(formatYuan("en", 15000), "CNY 15,000");
     assert.match(formatYuan("zh", 15000), /15,000 元/);
+  });
+
+  it("records two currencies and does not convert them", () => {
+    const pair = currencyLine("USD", "AED");
+    assert.equal(pair.quote, "USD");
+    assert.equal(pair.settle, "AED");
+    assert.equal(pair.differs, true);
+    assert.equal(currencyLine("usd", "USD").quote, "");
+    assert.equal(currencyLine(undefined, undefined).differs, false);
+    assert.equal(currencyLine("CNY", "CNY").differs, false);
   });
 
   it("translates a blocked status change without storing English", () => {

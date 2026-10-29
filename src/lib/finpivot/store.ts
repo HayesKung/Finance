@@ -75,6 +75,8 @@ export type Project = {
   clientId: string;
   name: string;
   market: string;
+  quoteCurrency: string;
+  settleCurrency: string;
   status: ProjectStatus;
   note: string;
 };

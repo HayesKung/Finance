@@ -83,6 +83,7 @@ function Home() {
           ))}
         </ol>
         <p className="mt-4 text-sm text-muted">{t("flowNote")}</p>
+        <p className="mt-2 text-sm text-muted">{t("fxRule")}</p>
       </section>
 
       <section className="mt-14 grid gap-8 md:grid-cols-12">

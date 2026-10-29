@@ -4,6 +4,7 @@ import { Btn, CanonSelect, Field, Frame, Kicker, Note, inputCls } from "@/compon
 import { SOURCES } from "@/lib/finpivot/copy";
 import { CLIENT_STATUSES, PROJECT_STATUSES } from "@/lib/finpivot/flow";
 import { useI18n } from "@/lib/finpivot/locale";
+import { CURRENCIES, currencyLine } from "@/lib/finpivot/glossary";
 import { cannotDelete } from "@/lib/finpivot/ui";
 import { useOs, type Client, type Project, type Source } from "@/lib/finpivot/store";
 
@@ -36,12 +37,15 @@ function ClientsPage() {
   const removeProject = useOs((s) => s.removeProject);
   const [form, setForm] = useState(blank);
   const [projectName, setProjectName] = useState<Record<string, string>>({});
+  const [quotePick, setQuotePick] = useState<Record<string, string>>({});
+  const [settlePick, setSettlePick] = useState<Record<string, string>>({});
   const [warn, setWarn] = useState("");
 
   return (
     <Frame>
       <Kicker n="09">{t("clientKicker")}</Kicker>
       <Note>{t("clientNote")}</Note>
+      <p className="mt-3 text-sm text-muted">{t("fxRule")}</p>
       <div className="mt-6 grid gap-3 md:grid-cols-3">
         <Field label={t("aliasLabel")}>
           <input className={inputCls} value={form.alias} onChange={(e) => setForm({ ...form, alias: e.target.value })} />
@@ -145,37 +149,93 @@ function ClientsPage() {
                 <div className="mt-4 border-t border-rule pt-3">
                   <p className="text-sm text-muted">{t("projects")}</p>
                   <ul className="mt-2">
-                    {own.map((p) => (
-                      <li key={p.id} className="flex flex-col gap-2 border-b border-rule py-2 md:flex-row md:items-center">
-                        <p className="flex-1 text-sm">{p.name} · {p.market || t("marketMissing")}</p>
-                        <CanonSelect
-                          className="h-11 border border-rule bg-paper px-2 text-sm"
-                          value={p.status}
-                          options={PROJECT_STATUSES}
-                          onChange={(value) => updateProject(p.id, { status: value as Project["status"] })}
-                        />
-                        <Btn tone="paper" onClick={() => removeProject(p.id)}>{t("removeProject")}</Btn>
+                    {own.map((p) => {
+                      const pair = currencyLine(p.quoteCurrency, p.settleCurrency);
+                      return (
+                      <li key={p.id} className="flex flex-col gap-2 border-b border-rule py-3">
+                        <p className="text-sm">{p.name} · {p.market || t("marketMissing")}</p>
+                        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+                          <label className="flex items-center gap-2 text-xs text-muted">
+                            {t("quoteCurrency")}
+                            <CanonSelect
+                              className="h-11 border border-rule bg-paper px-2 text-sm text-ink"
+                              value={pair.quote}
+                              options={CURRENCIES}
+                              blank={{ value: "", label: t("currencyUnset") }}
+                              onChange={(value) => updateProject(p.id, { quoteCurrency: value })}
+                            />
+                          </label>
+                          <label className="flex items-center gap-2 text-xs text-muted">
+                            {t("settleCurrency")}
+                            <CanonSelect
+                              className="h-11 border border-rule bg-paper px-2 text-sm text-ink"
+                              value={pair.settle}
+                              options={CURRENCIES}
+                              blank={{ value: "", label: t("currencyUnset") }}
+                              onChange={(value) => updateProject(p.id, { settleCurrency: value })}
+                            />
+                          </label>
+                          <CanonSelect
+                            className="h-11 border border-rule bg-paper px-2 text-sm"
+                            value={p.status}
+                            options={PROJECT_STATUSES}
+                            onChange={(value) => updateProject(p.id, { status: value as Project["status"] })}
+                          />
+                          <Btn tone="paper" onClick={() => removeProject(p.id)}>{t("removeProject")}</Btn>
+                        </div>
+                        {pair.differs ? <p className="text-xs leading-relaxed text-seal">{t("noConvert")}</p> : null}
                       </li>
-                    ))}
+                      );
+                    })}
                   </ul>
-                  <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                  <div className="mt-3 flex flex-col gap-2">
                     <input
                       className={inputCls}
                       placeholder={t("projectPh")}
                       value={projectName[c.id] ?? ""}
                       onChange={(e) => setProjectName({ ...projectName, [c.id]: e.target.value })}
                     />
-                    <Btn
-                      tone="paper"
-                      onClick={() => {
-                        const name = (projectName[c.id] ?? "").trim();
-                        if (!name) return;
-                        addProject({ clientId: c.id, name, market: c.market, status: "立项", note: "" });
-                        setProjectName({ ...projectName, [c.id]: "" });
-                      }}
-                    >
-                      {t("addProject")}
-                    </Btn>
+                    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+                      <label className="flex items-center gap-2 text-xs text-muted">
+                        {t("quoteCurrency")}
+                        <CanonSelect
+                          className="h-11 border border-rule bg-paper px-2 text-sm text-ink"
+                          value={quotePick[c.id] ?? ""}
+                          options={CURRENCIES}
+                          blank={{ value: "", label: t("currencyUnset") }}
+                          onChange={(value) => setQuotePick({ ...quotePick, [c.id]: value })}
+                        />
+                      </label>
+                      <label className="flex items-center gap-2 text-xs text-muted">
+                        {t("settleCurrency")}
+                        <CanonSelect
+                          className="h-11 border border-rule bg-paper px-2 text-sm text-ink"
+                          value={settlePick[c.id] ?? ""}
+                          options={CURRENCIES}
+                          blank={{ value: "", label: t("currencyUnset") }}
+                          onChange={(value) => setSettlePick({ ...settlePick, [c.id]: value })}
+                        />
+                      </label>
+                      <Btn
+                        tone="paper"
+                        onClick={() => {
+                          const name = (projectName[c.id] ?? "").trim();
+                          if (!name) return;
+                          addProject({
+                            clientId: c.id,
+                            name,
+                            market: c.market,
+                            quoteCurrency: quotePick[c.id] ?? "",
+                            settleCurrency: settlePick[c.id] ?? "",
+                            status: "立项",
+                            note: "",
+                          });
+                          setProjectName({ ...projectName, [c.id]: "" });
+                        }}
+                      >
+                        {t("addProject")}
+                      </Btn>
+                    </div>
                   </div>
                 </div>
               </li>

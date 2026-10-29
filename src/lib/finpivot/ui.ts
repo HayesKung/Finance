@@ -213,6 +213,11 @@ const zh = {
   mdImpact: "影响",
   mdNext: "下一步",
   mdUnset: "（未填）",
+  currencyUnset: "未记",
+  quoteCurrency: "报价币",
+  settleCurrency: "结算币",
+  noConvert: "两种币不同，只记录，不换算，不预测汇率。",
+  fxRule: "服务费只收人民币。项目的报价币和结算币分开记，不换算。",
 } as const;
 
 export type UiKey = keyof typeof zh;
@@ -429,6 +434,11 @@ const en: { [K in UiKey]: string } = {
   mdImpact: "Effect",
   mdNext: "Next step",
   mdUnset: "(not filled)",
+  currencyUnset: "Not recorded",
+  quoteCurrency: "Quote currency",
+  settleCurrency: "Settlement currency",
+  noConvert: "The two currencies differ. Record them. Do not convert, and do not forecast the rate.",
+  fxRule: "Service fees stay in CNY. A project's quote currency and settlement currency are recorded apart, and are not converted.",
 };
 
 export function t(locale: Locale, key: UiKey): string {

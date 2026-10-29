@@ -1,5 +1,37 @@
 export type Locale = "zh" | "en";
 
+export const CURRENCIES = [
+  "CNY",
+  "USD",
+  "EUR",
+  "GBP",
+  "AED",
+  "SAR",
+  "ZAR",
+  "NGN",
+  "KES",
+  "IDR",
+  "VND",
+  "MYR",
+  "SGD",
+  "THB",
+  "JPY",
+] as const;
+
+export type Currency = (typeof CURRENCIES)[number];
+
+export function knownCurrency(code: string | undefined): Currency | "" {
+  if (code && (CURRENCIES as readonly string[]).includes(code)) return code as Currency;
+  return "";
+}
+
+/** 只认 ISO 代码。两种币不同也不换算。 */
+export function currencyLine(quote: string | undefined, settle: string | undefined) {
+  const q = knownCurrency(quote);
+  const s = knownCurrency(settle);
+  return { quote: q, settle: s, differs: Boolean(q && s && q !== s) };
+}
+
 /** 存进浏览器的仍是中文原词。英文只在显示时替换，导回时再认回原词。 */
 const EN: Record<string, string> = {
   线索: "Lead",

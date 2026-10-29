@@ -46,6 +46,7 @@ function OrdersPage() {
         ))}
       </ol>
       <p className="mt-4 text-sm text-muted">{openOrdersLine(locale, open.length, yuan(outstanding))}</p>
+      <p className="mt-2 text-sm text-muted">{t("fxRule")}</p>
 
       <div className="mt-6 grid gap-3 md:grid-cols-3">
         <Field label={t("client")}>
