@@ -16,6 +16,7 @@
     "@vitejs/plugin-react": "^5.2.0",
     "lucide-react": "^0.510.0",
     "nitro": "3.0.260610-beta",
+    "pg": "^8.23.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "tailwindcss": "^4.3.0",
@@ -25,6 +26,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.20.5",
+    "@types/pg": "^8.23.0",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0"
   }
