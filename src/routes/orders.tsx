@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Btn, CanonSelect, Field, Frame, Kicker, Note, inputCls } from "@/components/finpivot/frame";
 import { SignPad } from "@/components/finpivot/sign-pad";
 import { PRODUCTS } from "@/lib/finpivot/copy";
@@ -7,6 +7,8 @@ import { BILLINGS, nextStatuses } from "@/lib/finpivot/flow";
 import { useI18n } from "@/lib/finpivot/locale";
 import { moveLabel, openOrdersLine } from "@/lib/finpivot/ui";
 import { PAY_METHODS, agreementPhase, type PayMethod } from "@/lib/finpivot/agreement";
+import { channelStatus, readStaffContract, saveChannel } from "@/lib/finpivot/contract-api";
+import { pushSheet } from "@/lib/finpivot/publish-client";
 import { useOs, type Order, type Product } from "@/lib/finpivot/store";
 
 export const Route = createFileRoute("/orders")({ component: OrdersPage });
@@ -36,6 +38,28 @@ function OrdersPage() {
   const [draftPay, setDraftPay] = useState<Record<string, string>>({});
   const [draftMethod, setDraftMethod] = useState<Record<string, PayMethod>>({});
   const [ink, setInk] = useState<Record<string, string>>({});
+  const [channels, setChannels] = useState({ wechat: false, alipay: false, esign: false });
+  const [secret, setSecret] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    let stop = false;
+    void channelStatus()
+      .then((status) => {
+        if (!stop) setChannels(status);
+      })
+      .catch(() => undefined);
+    void (async () => {
+      for (const sheet of useOs.getState().agreements ?? []) {
+        if (!sheet.staffToken) continue;
+        const result = await readStaffContract({ data: { token: sheet.staffToken } }).catch(() => null);
+        if (stop || !result?.payload) continue;
+        useOs.getState().applyRemote(sheet.ref, result.payload);
+      }
+    })();
+    return () => {
+      stop = true;
+    };
+  }, []);
 
   const clientProjects = projects.filter((p) => p.clientId === clientId);
   const open = orders.filter((o) => o.status !== "已取消" && o.status !== "已交付");
@@ -81,6 +105,45 @@ function OrdersPage() {
           <Field label={t("alipayAccount")}>
             <input className={inputCls} value={firm?.alipayAccount ?? ""} onChange={(e) => setFirm({ alipayAccount: e.target.value })} />
           </Field>
+        </div>
+        <div className="mt-8">
+          <Kicker n="12">{t("channelKicker")}</Kicker>
+          <Note>{t("channelNote")}</Note>
+          <ul className="mt-4 grid gap-3 md:grid-cols-3">
+            {(
+              [
+                ["wechat", t("channelWechat"), "https://pay.weixin.qq.com/"],
+                ["alipay", t("channelAlipay"), "https://b.alipay.com/"],
+                ["esign", t("channelEsign"), "https://open.esign.cn/"],
+              ] as const
+            ).map(([id, label, href]) => (
+              <li key={id} className="border border-rule p-3">
+                <p className="font-medium">{label}</p>
+                <p className="mt-1 text-sm text-muted">{channels[id] ? t("channelArmed") : t("channelOff")}</p>
+                <a className="mt-2 inline-flex h-11 items-center text-sm underline decoration-rule underline-offset-4" href={href} target="_blank" rel="noreferrer">
+                  {t("channelOpen")}
+                </a>
+                <Field label={t("channelSecret")}>
+                  <input className={inputCls} type="password" value={secret[id] ?? ""} autoComplete="off" onChange={(e) => setSecret({ ...secret, [id]: e.target.value })} />
+                </Field>
+                <div className="mt-2">
+                  <Btn
+                    tone="paper"
+                    onClick={() => {
+                      const value = secret[id]?.trim() ?? "";
+                      if (!value) return;
+                      void saveChannel({ data: { id, appId: "", merchantId: "", secret: value } }).then(() => {
+                        setChannels({ ...channels, [id]: true });
+                        setSecret({ ...secret, [id]: "" });
+                      });
+                    }}
+                  >
+                    {t("channelSave")}
+                  </Btn>
+                </div>
+              </li>
+            ))}
+          </ul>
         </div>
       </div>
 
@@ -170,13 +233,36 @@ function OrdersPage() {
                     ) : null}
                     {sheet.firmSignedAt ? <p className="mt-1 text-sm text-muted">{t("signPartyB")} · {sheet.firmSigner}</p> : null}
                     {sheet.claimedMethod ? <p className="mt-1 text-sm text-muted">{t("claimedVia")} · {show(sheet.claimedMethod)}</p> : null}
-                    <a className="mt-2 inline-flex h-11 items-center text-sm underline decoration-rule underline-offset-4" href={`/sign?ref=${encodeURIComponent(sheet.ref)}`}>
+                    <a className="mt-2 inline-flex h-11 items-center text-sm underline decoration-rule underline-offset-4" href={sheet.customerToken ? `/sign?t=${encodeURIComponent(sheet.customerToken)}` : `/sign?ref=${encodeURIComponent(sheet.ref)}`}>
                       {t("openSign")}
                     </a>
                     {sheet.signedAt && !sheet.firmSignedAt ? (
                       <div className="mt-3 grid max-w-md gap-2">
                         <SignPad label={t("signDraw")} onChange={(dataUrl) => setInk({ ...ink, [sheet.ref]: dataUrl })} />
-                        <Btn onClick={() => countersign(sheet.ref, ink[sheet.ref] ?? "")}>{t("countersign")}</Btn>
+                        <Btn
+                          onClick={() => {
+                            const image = ink[sheet.ref] ?? "";
+                            if (!countersign(sheet.ref, image)) return;
+                            const snap = useOs.getState();
+                            const next = snap.agreements.find((entry) => entry.ref === sheet.ref);
+                            if (!next) return;
+                            void pushSheet({
+                              sheet: next,
+                              firm: snap.firm,
+                              company: client?.company ?? "",
+                              product: o.product,
+                              title: o.title,
+                              billing: o.billing,
+                              amountYuan: o.amountYuan,
+                              dueLabel: due?.label ?? "",
+                              dueYuan: due?.expectedYuan ?? 0,
+                              deliverables: items.map((entry) => entry.name),
+                              receivedYuan: due?.receivedYuan ?? 0,
+                            });
+                          }}
+                        >
+                          {t("countersign")}
+                        </Btn>
                         {!firm?.signerName?.trim() || !ink[sheet.ref] ? <p className="text-sm text-seal">{t("countersignNeed")} {t("signDrawNeed")}</p> : null}
                       </div>
                     ) : null}

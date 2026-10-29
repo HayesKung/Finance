@@ -7,6 +7,7 @@ import { useI18n } from "@/lib/finpivot/locale";
 import { leadCount } from "@/lib/finpivot/ui";
 import { BILLINGS, type Billing } from "@/lib/finpivot/flow";
 import { needToProduct } from "@/lib/finpivot/inquiry";
+import { pushSheet } from "@/lib/finpivot/publish-client";
 import { useOs, type Lead, type Outreach, type Source, type Stage } from "@/lib/finpivot/store";
 
 export const Route = createFileRoute("/pipeline")({ component: PipelinePage });
@@ -177,11 +178,31 @@ function PipelinePage() {
                           onClick={() => {
                             const amountYuan = Number(fee);
                             if (!matter.trim() || !amountYuan) return;
-                            quoteInquiry(item.id, {
+                            const ref = quoteInquiry(item.id, {
                               product: needToProduct(item.need),
                               billing: bill,
                               title: matter.trim(),
                               amountYuan,
+                            });
+                            const snap = useOs.getState();
+                            const sheet = snap.agreements.find((entry) => entry.ref === ref);
+                            const order = sheet ? snap.orders.find((entry) => entry.id === sheet.orderId) : undefined;
+                            const client = sheet ? snap.clients.find((entry) => entry.id === sheet.clientId) : undefined;
+                            if (!sheet || !order) return;
+                            const lines = snap.payments.filter((entry) => entry.orderId === order.id);
+                            const items = snap.deliverables.filter((entry) => entry.orderId === order.id);
+                            void pushSheet({
+                              sheet,
+                              firm: snap.firm,
+                              company: client?.company ?? "",
+                              product: order.product,
+                              title: order.title,
+                              billing: order.billing,
+                              amountYuan: order.amountYuan,
+                              dueLabel: lines[0]?.label ?? "",
+                              dueYuan: lines[0]?.expectedYuan ?? 0,
+                              deliverables: items.map((entry) => entry.name),
+                              receivedYuan: lines[0]?.receivedYuan ?? 0,
                             });
                           }}
                         >
@@ -205,7 +226,7 @@ function PipelinePage() {
               ) : null}
               {sheet ? (
                 <div className="md:col-span-4 md:text-right">
-                  <a className="inline-flex h-11 items-center text-sm underline decoration-rule underline-offset-4" href={`/sign?ref=${encodeURIComponent(sheet.ref)}`}>
+                  <a className="inline-flex h-11 items-center text-sm underline decoration-rule underline-offset-4" href={sheet.customerToken ? `/sign?t=${encodeURIComponent(sheet.customerToken)}` : `/sign?ref=${encodeURIComponent(sheet.ref)}`}>
                     {t("openSign")}
                   </a>
                 </div>

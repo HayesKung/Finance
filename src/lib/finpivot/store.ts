@@ -197,6 +197,22 @@ type OsState = {
   signAgreement: (ref: string, name: string, image: string) => boolean;
   countersign: (ref: string, image: string) => boolean;
   claimPrepaid: (ref: string, method: PayMethod) => boolean;
+  applyRemote: (
+    ref: string,
+    patch: Partial<
+      Pick<
+        Agreement,
+        | "signedName"
+        | "signedAt"
+        | "signedImage"
+        | "firmSigner"
+        | "firmSignedAt"
+        | "firmSignImage"
+        | "claimedMethod"
+        | "claimedAt"
+      >
+    >,
+  ) => void;
   addLead: (lead: Omit<Lead, "id">) => void;
   updateLead: (id: string, patch: Partial<Lead>) => void;
   removeLead: (id: string) => void;
@@ -402,6 +418,8 @@ export const useOs = create<OsState>()(
             leadId: lead.id,
             clientId,
             orderId,
+            customerToken: crypto.randomUUID(),
+            staffToken: crypto.randomUUID(),
             payeeName: "",
             payeeBank: "",
             payeeAccount: "",
@@ -490,6 +508,23 @@ export const useOs = create<OsState>()(
         });
         return ok;
       },
+      applyRemote: (ref, patch) =>
+        set((s) => ({
+          agreements: (s.agreements ?? []).map((item) => {
+            if (item.ref !== ref) return item;
+            return {
+              ...item,
+              signedName: patch.signedAt ? patch.signedName || item.signedName : item.signedName,
+              signedAt: patch.signedAt || item.signedAt,
+              signedImage: patch.signedAt ? patch.signedImage || item.signedImage : item.signedImage,
+              firmSigner: patch.firmSignedAt ? patch.firmSigner || item.firmSigner : item.firmSigner,
+              firmSignedAt: patch.firmSignedAt || item.firmSignedAt,
+              firmSignImage: patch.firmSignedAt ? patch.firmSignImage || item.firmSignImage : item.firmSignImage,
+              claimedMethod: patch.claimedAt ? patch.claimedMethod || item.claimedMethod : item.claimedMethod,
+              claimedAt: patch.claimedAt || item.claimedAt,
+            };
+          }),
+        })),
       addLead: (lead) => set((s) => ({ leads: [{ ...lead, id: uid() }, ...s.leads] })),
       updateLead: (id, patch) =>
         set((s) => ({

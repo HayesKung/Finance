@@ -8,6 +8,8 @@ export type Agreement = {
   leadId: string;
   clientId: string;
   orderId: string;
+  customerToken: string;
+  staffToken: string;
   payeeName: string;
   payeeBank: string;
   payeeAccount: string;
