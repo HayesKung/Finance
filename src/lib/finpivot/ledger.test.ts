@@ -90,5 +90,8 @@ describe("server desk checks", () => {
     assert.match(diffDesk(prev, raised, "support").reason, /负责人/);
     const repriced = { ...prev, orders: [{ ...order, amountYuan: 3000 }] };
     assert.match(diffDesk(prev, repriced).reason, /改价/);
+    const logged = { ...prev, orders: [{ ...order, priceLog: [{ at: "2026-10-29", fromYuan: 5000, toYuan: 4000, note: "原先写高了" }] }] };
+    const wiped = { ...logged, orders: [{ ...order, priceLog: [] }] };
+    assert.match(diffDesk(logged, wiped).reason, /不能删/);
   });
 });

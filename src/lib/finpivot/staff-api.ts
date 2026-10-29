@@ -40,6 +40,22 @@ export const logoutStaff = createServerFn({ method: "POST" }).handler(async () =
   return { ok: true as const };
 });
 
+export const deskHealth = createServerFn({ method: "POST" }).handler(async () => {
+  const session = await import("@/lib/finpivot/session.server");
+  session.requireStaff("readDesk");
+  try {
+    const { getSql } = await import("@/lib/db");
+    const sql = await getSql();
+    await sql.query("select 1 as ok");
+    const cols = await sql.query<{ column_name: string }>(
+      "select column_name from information_schema.columns where table_name = 'fin_contract' and column_name = 'expires_at'",
+    );
+    return { db: true, accessSchema: cols.length === 1 };
+  } catch {
+    return { db: false, accessSchema: false };
+  }
+});
+
 export const loadDesk = createServerFn({ method: "POST" }).handler(async () => {
   const session = await import("@/lib/finpivot/session.server");
   session.requireStaff("readDesk");

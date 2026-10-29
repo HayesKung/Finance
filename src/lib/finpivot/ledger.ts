@@ -10,6 +10,7 @@ export type DeskOrder = {
   sop?: { id: string; done: boolean }[];
   handoff?: Handoff;
   changeNote?: string;
+  priceLog?: { at: string; fromYuan: number; toYuan: number; note: string }[];
 };
 
 export type DeskPay = {
@@ -49,6 +50,9 @@ export function diffDesk(prev: DeskBody, next: DeskBody, role: "owner" | "suppor
   const prevOrders = new Map(prev.orders.map((order) => [order.id, order]));
   for (const order of next.orders) {
     const before = prevOrders.get(order.id);
+    if (before && (before.priceLog?.length ?? 0) > (order.priceLog?.length ?? 0)) {
+      return { ok: false, reason: "改价记录不能删。" };
+    }
     if (before && before.amountYuan !== order.amountYuan) {
       if (role !== "owner") return { ok: false, reason: "改价只有负责人能做。" };
       if ((order.changeNote?.trim().length ?? 0) < 8) return { ok: false, reason: "改价要写明原因。" };

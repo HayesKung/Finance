@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { admissionReady, applyReversal, buildPlan, canDeliver, canStart, diagnosisReady, evidenceFunnel, gateMove, handoffReady, qualifyReady, revisePrice, serviceAllowed, settled, sopItems, sopReady } from "./flow.ts";
+import { admissionReady, applyReversal, buildPlan, canDeliver, canStart, diagnosisReady, evidenceFunnel, gateMove, handoffReady, qualifyReady, reconcileSnapshot, reportSignoff, revisePrice, serviceAllowed, settled, sopItems, sopReady } from "./flow.ts";
 
 describe("service fee gates", () => {
   it("splits a per-order fee into 50% deposit and the rest", () => {
@@ -66,5 +66,11 @@ describe("service fee gates", () => {
     assert.equal(diagnosisReady("太短").ok, false);
     assert.match(revisePrice({ status: "执行中", nextYuan: 3000, note: "客户要求改范围", received: 0 }).reason, /不能直接改价/);
     assert.equal(revisePrice({ status: "待收款", nextYuan: 3000, note: "诊断后缩小了范围", received: 0 }).amountYuan, 3000);
+    assert.equal(reportSignoff({ status: "已核验", preparer: "海", reviewer: "海", counts: { added: "1" } }).ok, false);
+    assert.equal(reportSignoff({ status: "已核验", preparer: "海", reviewer: "支撑", counts: { added: "1", invited: "0" } }).ok, true);
+    assert.equal(reportSignoff({ status: "已核验", preparer: "海", reviewer: "支撑", counts: { added: "约1" } }).ok, false);
+    const shot = { orders: 2, payments: 4, receivedYuan: 8000, contracts: 2 };
+    assert.equal(reconcileSnapshot(shot, shot).ok, true);
+    assert.match(reconcileSnapshot(shot, { ...shot, receivedYuan: 7000 }).reason, /receivedYuan/);
   });
 });

@@ -46,6 +46,7 @@ import {
   gateMove,
   handoffReady,
   qualifyReady,
+  reportSignoff,
   reviewReady,
   revisePrice,
   sopItems,
@@ -139,6 +140,7 @@ export type Order = {
   sop?: { id: string; done: boolean }[];
   handoff?: Handoff;
   changeNote?: string;
+  priceLog?: { at: string; fromYuan: number; toYuan: number; note: string }[];
 };
 
 export type Payment = {
@@ -184,6 +186,9 @@ export type WeekReport = {
   quoted: string;
   note: string;
   status: "草稿" | "待小m核验" | "已核验";
+  preparer: string;
+  reviewer: string;
+  block: string;
 };
 
 type OsState = {
@@ -347,6 +352,9 @@ export const useOs = create<OsState>()(
         quoted: "",
         note: "",
         status: "草稿",
+        preparer: "",
+        reviewer: "",
+        block: "",
       },
       hostingClients: 3,
       hostingFee: 15000,
@@ -602,7 +610,26 @@ export const useOs = create<OsState>()(
       setTemplate: (id, body) => set((s) => ({ templates: { ...s.templates, [id]: body } })),
       toggleArticle: (id) =>
         set((s) => ({ articleChecked: { ...s.articleChecked, [id]: !s.articleChecked[id] } })),
-      setReport: (patch) => set((s) => ({ report: { ...s.report, ...patch } })),
+      setReport: (patch) =>
+        set((s) => {
+          const report = { ...s.report, ...patch, block: "" };
+          if (report.status === "已核验") {
+            const gate = reportSignoff({
+              status: report.status,
+              preparer: report.preparer,
+              reviewer: report.reviewer,
+              counts: {
+                added: report.added,
+                invited: report.invited,
+                diagnosed: report.diagnosed,
+                listed: report.listed,
+                quoted: report.quoted,
+              },
+            });
+            if (!gate.ok) return { report: { ...s.report, block: gate.reason } };
+          }
+          return { report };
+        }),
       setModel: (patch) => set(patch),
       addClient: (row) =>
         set((s) => ({
@@ -673,7 +700,15 @@ export const useOs = create<OsState>()(
             return { orders: s.orders.map((item) => (item.id === orderId ? { ...item, blockReason: revised.reason } : item)) };
           }
           const orders = s.orders.map((item) =>
-            item.id === orderId ? { ...item, amountYuan: revised.amountYuan, changeNote: note.trim(), blockReason: "" } : item,
+            item.id === orderId
+              ? {
+                  ...item,
+                  amountYuan: revised.amountYuan,
+                  changeNote: note.trim(),
+                  blockReason: "",
+                  priceLog: [...(item.priceLog ?? []), { at: new Date().toISOString(), fromYuan: order.amountYuan, toYuan: revised.amountYuan, note: note.trim() }],
+                }
+              : item,
           );
           if (order.status !== "待收款") return { orders };
           const payments = buildPlan(order.billing, revised.amountYuan).map((line) => ({

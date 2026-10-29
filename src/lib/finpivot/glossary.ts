@@ -179,6 +179,9 @@ const EN: Record<string, string> = {
   "同一回单号不能用两次。": "The same voucher number cannot be used twice.",
   "实收只有负责人能核对。": "Only the principal can confirm money received.",
   "交付确认只有负责人能做。": "Only the principal can confirm delivery.",
+  "周报不能由同一个人编写并核验。": "The same person cannot write and verify the weekly note.",
+  "周报数字只能是已经发生的笔数。": "Weekly figures must be counts that already happened.",
+  "改价记录不能删。": "A price-change record cannot be deleted.",
 };
 
 const ZH = new Map(Object.entries(EN).map(([zh, en]) => [en.toLowerCase(), zh]));

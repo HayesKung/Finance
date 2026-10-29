@@ -138,6 +138,38 @@ export type Handoff = {
   closeoutNote: string;
 };
 
+export type PriceChange = { at: string; fromYuan: number; toYuan: number; note: string };
+
+export type MoneySnapshot = {
+  orders: number;
+  payments: number;
+  receivedYuan: number;
+  contracts: number;
+};
+
+export function reportSignoff(input: {
+  status: "草稿" | "待小m核验" | "已核验";
+  preparer: string | undefined;
+  reviewer: string | undefined;
+  counts: Record<string, string | undefined>;
+}) {
+  if (input.status !== "已核验") return { ok: true, reason: "" };
+  const preparer = (input.preparer ?? "").trim();
+  const reviewer = (input.reviewer ?? "").trim();
+  if (!preparer || !reviewer || preparer === reviewer) return { ok: false, reason: "周报不能由同一个人编写并核验。" };
+  if (Object.values(input.counts).some((value) => !/^\d+$/.test((value ?? "").trim()))) {
+    return { ok: false, reason: "周报数字只能是已经发生的笔数。" };
+  }
+  return { ok: true, reason: "" };
+}
+
+export function reconcileSnapshot(before: MoneySnapshot, after: MoneySnapshot) {
+  const fields = ["orders", "payments", "receivedYuan", "contracts"] as const;
+  const drift = fields.filter((key) => before[key] !== after[key]);
+  if (drift.length > 0) return { ok: false, reason: `恢复后对不上：${drift.join("、")}` };
+  return { ok: true, reason: "" };
+}
+
 export function diagnosisReady(note: string | undefined) {
   if ((note?.trim().length ?? 0) < 8) return { ok: false, reason: "还没有诊断出的风险要点。" };
   return { ok: true, reason: "" };

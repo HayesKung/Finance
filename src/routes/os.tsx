@@ -1,8 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { Btn, CanonSelect, Field, Frame, Kicker, Note, inputCls, areaCls } from "@/components/finpivot/frame";
 import { META, STAGES } from "@/lib/finpivot/copy";
 import { canon } from "@/lib/finpivot/glossary";
 import { useI18n } from "@/lib/finpivot/locale";
+import { deskHealth } from "@/lib/finpivot/staff-api";
 import { outreachDetail, perMonth, weekProgress } from "@/lib/finpivot/ui";
 import { useOs } from "@/lib/finpivot/store";
 
@@ -17,6 +19,7 @@ function OsPage() {
         {META.owner} / {META.reviewer}. {t("osLede")}
       </p>
       <Counters />
+      <HealthLine />
       <WeekList />
       <Report />
       <Rhythm />
@@ -95,6 +98,22 @@ function WeekList() {
   );
 }
 
+function HealthLine() {
+  const { t } = useI18n();
+  const [health, setHealth] = useState<{ db: boolean; accessSchema: boolean } | null>(null);
+  useEffect(() => {
+    void deskHealth()
+      .then((row) => setHealth(row))
+      .catch(() => setHealth({ db: false, accessSchema: false }));
+  }, []);
+  if (!health) return null;
+  return (
+    <p className="mt-4 text-sm text-muted">
+      {t("healthDb")} {health.db ? t("healthOn") : t("healthOff")} · {t("healthSchema")} {health.accessSchema ? t("healthOn") : t("healthOff")}
+    </p>
+  );
+}
+
 function Report() {
   const { t, show } = useI18n();
   const report = useOs((s) => s.report);
@@ -125,6 +144,14 @@ function Report() {
           <textarea className={areaCls} value={report.note} onChange={(e) => setReport({ note: e.target.value })} />
         </Field>
       </div>
+      <div className="mt-3 grid gap-3 md:grid-cols-2">
+        <Field label={t("preparer")}>
+          <input className={inputCls} value={report.preparer ?? ""} onChange={(e) => setReport({ preparer: e.target.value })} />
+        </Field>
+        <Field label={t("reviewer")}>
+          <input className={inputCls} value={report.reviewer ?? ""} onChange={(e) => setReport({ reviewer: e.target.value })} />
+        </Field>
+      </div>
       <div className="mt-3 flex flex-wrap gap-2">
         {(["草稿", "待小m核验", "已核验"] as const).map((st) => (
           <Btn key={st} tone={report.status === st ? "seal" : "paper"} onClick={() => setReport({ status: st })}>
@@ -132,6 +159,7 @@ function Report() {
           </Btn>
         ))}
       </div>
+      {report.block ? <p className="mt-2 text-sm text-seal">{show(report.block)}</p> : null}
     </section>
   );
 }
