@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Btn, Field, Frame, Kicker, Note, inputCls } from "@/components/finpivot/frame";
-import { agreementPhase, bothSigned, contractBody } from "@/lib/finpivot/agreement";
+import { PAY_METHODS, agreementPhase, bothSigned, contractBody, methodDetail, methodReady, type PayMethod } from "@/lib/finpivot/agreement";
 import { useI18n } from "@/lib/finpivot/locale";
 import { useOs } from "@/lib/finpivot/store";
 
@@ -22,6 +22,7 @@ function SignPage() {
   const [consent, setConsent] = useState(false);
   const [miss, setMiss] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [method, setMethod] = useState<PayMethod | "">("");
 
   useEffect(() => {
     const fromUrl = new URLSearchParams(window.location.search).get("ref");
@@ -37,6 +38,14 @@ function SignPage() {
   const items = sheet ? deliverables.filter((item) => item.orderId === sheet.orderId) : [];
   const ready = sheet ? bothSigned(sheet) : false;
   const account = firm?.payeeAccount?.trim() ?? "";
+  const channels = {
+    payeeName: firm?.payeeName ?? "",
+    payeeBank: firm?.payeeBank ?? "",
+    payeeAccount: account,
+    wechatId: firm?.wechatId ?? "",
+    alipayAccount: firm?.alipayAccount ?? "",
+  };
+  const anyReady = PAY_METHODS.some((item) => methodReady(channels, item));
   const text = sheet && order && due
     ? contractBody({
         ref: sheet.ref,
@@ -49,9 +58,11 @@ function SignPage() {
         dueLabel: show(due.label),
         dueYuan: due.expectedYuan,
         deliverables: items.map((item) => show(item.name)),
-        payeeName: ready ? firm?.payeeName ?? "" : "",
-        payeeBank: ready ? firm?.payeeBank ?? "" : "",
+        payeeName: ready ? channels.payeeName : "",
+        payeeBank: ready ? channels.payeeBank : "",
         payeeAccount: ready ? account : "",
+        wechatId: ready ? channels.wechatId : "",
+        alipayAccount: ready ? channels.alipayAccount : "",
       })
     : "";
 
@@ -107,21 +118,41 @@ function SignPage() {
             <div className="mt-4 border-t border-rule pt-4">
               <p className="text-sm">{t("signSigned")} · {sheet.signedName}</p>
               {sheet.firmSignedAt ? <p className="mt-1 text-sm">{t("countersign")} · {sheet.firmSigner}</p> : <p className="mt-2 text-sm text-seal">{t("signWaitFirm")}</p>}
-              {ready && !account ? <p className="mt-2 text-sm text-seal">{t("signPayeeMissing")}</p> : null}
-              {ready && account ? (
+              {ready && !anyReady ? <p className="mt-2 text-sm text-seal">{t("signPayeeMissing")}</p> : null}
+              {ready && anyReady && !sheet.claimedAt ? (
                 <div className="mt-3">
-                  <p className="text-sm text-muted">{t("signPayee")}</p>
-                  <p className="mt-1 text-sm">{firm?.payeeName}</p>
-                  <p className="text-sm">{firm?.payeeBank}</p>
-                  <p className="text-sm">{firm?.payeeAccount}</p>
+                  <p className="text-sm text-muted">{t("payWays")}</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {PAY_METHODS.map((item) => (
+                      <button
+                        key={item}
+                        type="button"
+                        className={`inline-flex h-11 items-center border px-3 text-sm ${method === item ? "border-ink bg-ink text-paper" : "border-rule text-ink"}`}
+                        onClick={() => setMethod(item)}
+                      >
+                        {show(item)}
+                      </button>
+                    ))}
+                  </div>
+                  {method ? (
+                    methodReady(channels, method) ? (
+                      <p className="mt-3 text-sm">{methodDetail(channels, method)}</p>
+                    ) : (
+                      <p className="mt-3 text-sm text-seal">{t("methodEmpty")}</p>
+                    )
+                  ) : null}
+                  {method && methodReady(channels, method) ? (
+                    <div className="mt-3">
+                      <Btn onClick={() => claimPrepaid(sheet.ref, method)}>{t("signClaim")}</Btn>
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
-              {ready && account && !sheet.claimedAt ? (
-                <div className="mt-3">
-                  <Btn onClick={() => claimPrepaid(sheet.ref)}>{t("signClaim")}</Btn>
-                </div>
+              {sheet.claimedAt ? (
+                <p className="mt-2 text-sm text-muted">
+                  {t("signClaimed")} {sheet.claimedMethod ? show(sheet.claimedMethod) : ""}
+                </p>
               ) : null}
-              {sheet.claimedAt ? <p className="mt-2 text-sm text-muted">{t("signClaimed")}</p> : null}
             </div>
           ) : (
             <form

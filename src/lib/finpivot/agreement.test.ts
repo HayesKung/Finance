@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { agreementPhase, bothSigned, contractBody, makeAgreementRef } from "./agreement.ts";
+import { agreementPhase, bothSigned, contractBody, makeAgreementRef, methodReady } from "./agreement.ts";
 
 describe("service confirmation", () => {
   it("builds a reference the customer can read back", () => {
@@ -32,11 +32,38 @@ describe("service confirmation", () => {
       payeeName: "",
       payeeBank: "",
       payeeAccount: "",
+      wechatId: "",
+      alipayAccount: "",
     });
     assert.match(text, /人民币 4000 元/);
     assert.match(text, /定金 50% 2000 元/);
     assert.match(text, /不是电子认证服务机构的可靠电子签名/);
     assert.match(text, /乙方名称未填写/);
     assert.match(text, /填写前不要付款/);
+  });
+
+  it("only offers a channel that has an account", () => {
+    assert.equal(methodReady({ wechatId: "wx-desk" }, "微信"), true);
+    assert.equal(methodReady({ wechatId: "wx-desk" }, "支付宝"), false);
+    assert.equal(methodReady({ payeeAccount: "6222" }, "银行转账"), true);
+    const text = contractBody({
+      ref: "AGR-1",
+      company: "甲",
+      firmName: "乙",
+      product: "出口财务包",
+      title: "核对",
+      billing: "按单",
+      amountYuan: 1000,
+      dueLabel: "定金 50%",
+      dueYuan: 500,
+      deliverables: [],
+      payeeName: "",
+      payeeBank: "",
+      payeeAccount: "",
+      wechatId: "wx-desk",
+      alipayAccount: "",
+    });
+    assert.match(text, /微信：wx-desk/);
+    assert.doesNotMatch(text, /支付宝：/);
   });
 });

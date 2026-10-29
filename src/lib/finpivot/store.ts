@@ -15,7 +15,7 @@ import {
   makeInquiryRef,
   type Inquiry,
 } from "@/lib/finpivot/inquiry";
-import { makeAgreementRef, type Agreement } from "@/lib/finpivot/agreement";
+import { makeAgreementRef, methodReady, type Agreement, type PayMethod } from "@/lib/finpivot/agreement";
 
 export type Firm = {
   legalName: string;
@@ -23,9 +23,19 @@ export type Firm = {
   payeeName: string;
   payeeBank: string;
   payeeAccount: string;
+  wechatId: string;
+  alipayAccount: string;
 };
 
-const emptyFirm: Firm = { legalName: "", signerName: "", payeeName: "", payeeBank: "", payeeAccount: "" };
+const emptyFirm: Firm = {
+  legalName: "",
+  signerName: "",
+  payeeName: "",
+  payeeBank: "",
+  payeeAccount: "",
+  wechatId: "",
+  alipayAccount: "",
+};
 import {
   buildPlan,
   deliverableNames,
@@ -118,6 +128,7 @@ export type Payment = {
   label: string;
   expectedYuan: number;
   receivedYuan: number;
+  method: "" | PayMethod;
 };
 
 export type Deliverable = {
@@ -185,7 +196,7 @@ type OsState = {
   setPayee: (id: string, patch: Partial<Pick<Agreement, "payeeName" | "payeeBank" | "payeeAccount">>) => void;
   signAgreement: (ref: string, name: string) => boolean;
   countersign: (ref: string) => boolean;
-  claimPrepaid: (ref: string) => boolean;
+  claimPrepaid: (ref: string, method: PayMethod) => boolean;
   addLead: (lead: Omit<Lead, "id">) => void;
   updateLead: (id: string, patch: Partial<Lead>) => void;
   removeLead: (id: string) => void;
@@ -212,7 +223,7 @@ type OsState = {
   addOrder: (row: OrderInput) => void;
   issuePlan: (orderId: string) => void;
   moveOrder: (orderId: string, status: OrderStatus) => void;
-  recordReceipt: (paymentId: string, yuan: number) => void;
+  recordReceipt: (paymentId: string, yuan: number, method: "" | PayMethod) => void;
   toggleDeliverable: (id: string) => void;
 };
 
@@ -369,7 +380,12 @@ export const useOs = create<OsState>()(
               ];
           const orderId = uid();
           const amountYuan = Math.round(row.amountYuan);
-          const payments = buildPlan(row.billing, amountYuan).map((line) => ({ ...line, id: uid(), orderId }));
+          const payments = buildPlan(row.billing, amountYuan).map((line) => ({
+            ...line,
+            id: uid(),
+            orderId,
+            method: "" as const,
+          }));
           const deliverables = deliverableNames(row.product).map((name) => ({
             id: uid(),
             orderId,
@@ -393,6 +409,7 @@ export const useOs = create<OsState>()(
             signedAt: "",
             firmSigner: "",
             firmSignedAt: "",
+            claimedMethod: "",
             claimedAt: "",
           };
           return {
@@ -453,16 +470,16 @@ export const useOs = create<OsState>()(
         });
         return ok;
       },
-      claimPrepaid: (ref) => {
+      claimPrepaid: (ref, method) => {
         let ok = false;
         set((s) => {
-          const account = (s.firm ?? emptyFirm).payeeAccount.trim();
+          const firm = { ...emptyFirm, ...s.firm };
           const sheet = (s.agreements ?? []).find((item) => item.ref === ref);
-          if (!sheet || !sheet.signedAt || !sheet.firmSignedAt || !account || sheet.claimedAt) return s;
+          if (!sheet || !sheet.signedAt || !sheet.firmSignedAt || sheet.claimedAt || !methodReady(firm, method)) return s;
           ok = true;
           return {
             agreements: s.agreements.map((item) =>
-              item.ref === ref ? { ...item, claimedAt: new Date().toISOString() } : item,
+              item.ref === ref ? { ...item, claimedMethod: method, claimedAt: new Date().toISOString() } : item,
             ),
           };
         });
@@ -581,6 +598,7 @@ export const useOs = create<OsState>()(
             ...line,
             id: uid(),
             orderId,
+            method: "" as const,
           }));
           const deliverables = deliverableNames(order.product).map((name) => ({
             id: uid(),
@@ -622,12 +640,12 @@ export const useOs = create<OsState>()(
             ),
           };
         }),
-      recordReceipt: (paymentId, yuan) =>
+      recordReceipt: (paymentId, yuan, method) =>
         set((s) => ({
           payments: s.payments.map((p) => {
             if (p.id !== paymentId) return p;
             const receivedYuan = Math.max(0, Math.min(p.expectedYuan, Math.round(yuan)));
-            return { ...p, receivedYuan };
+            return { ...p, receivedYuan, method };
           }),
         })),
       toggleDeliverable: (id) =>

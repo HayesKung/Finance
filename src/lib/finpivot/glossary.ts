@@ -146,6 +146,9 @@ const EN: Record<string, string> = {
   待转账: "Waiting for the transfer",
   待核对到账: "Transfer claimed, not checked",
   预收已核对: "Prepayment checked",
+  微信: "WeChat",
+  支付宝: "Alipay",
+  银行转账: "Bank transfer",
 };
 
 const ZH = new Map(Object.entries(EN).map(([zh, en]) => [en.toLowerCase(), zh]));

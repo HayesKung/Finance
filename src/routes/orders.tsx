@@ -5,7 +5,7 @@ import { PRODUCTS } from "@/lib/finpivot/copy";
 import { BILLINGS, nextStatuses } from "@/lib/finpivot/flow";
 import { useI18n } from "@/lib/finpivot/locale";
 import { moveLabel, openOrdersLine } from "@/lib/finpivot/ui";
-import { agreementPhase } from "@/lib/finpivot/agreement";
+import { PAY_METHODS, agreementPhase, type PayMethod } from "@/lib/finpivot/agreement";
 import { useOs, type Order, type Product } from "@/lib/finpivot/store";
 
 export const Route = createFileRoute("/orders")({ component: OrdersPage });
@@ -33,6 +33,7 @@ function OrdersPage() {
   const [title, setTitle] = useState("");
   const [amount, setAmount] = useState("");
   const [draftPay, setDraftPay] = useState<Record<string, string>>({});
+  const [draftMethod, setDraftMethod] = useState<Record<string, PayMethod>>({});
 
   const clientProjects = projects.filter((p) => p.clientId === clientId);
   const open = orders.filter((o) => o.status !== "已取消" && o.status !== "已交付");
@@ -55,6 +56,7 @@ function OrdersPage() {
       <div className="mt-6">
         <Kicker n="11">{t("firmKicker")}</Kicker>
         <Note>{t("firmNote")}</Note>
+        <p className="mt-3 text-sm text-muted">{t("payWays")}</p>
         <div className="mt-3 grid gap-3 md:grid-cols-3">
           <Field label={t("firmLegal")}>
             <input className={inputCls} value={firm?.legalName ?? ""} onChange={(e) => setFirm({ legalName: e.target.value })} />
@@ -70,6 +72,12 @@ function OrdersPage() {
           </Field>
           <Field label={t("payeeAccount")}>
             <input className={inputCls} value={firm?.payeeAccount ?? ""} onChange={(e) => setFirm({ payeeAccount: e.target.value })} />
+          </Field>
+          <Field label={t("wechatId")}>
+            <input className={inputCls} value={firm?.wechatId ?? ""} onChange={(e) => setFirm({ wechatId: e.target.value })} />
+          </Field>
+          <Field label={t("alipayAccount")}>
+            <input className={inputCls} value={firm?.alipayAccount ?? ""} onChange={(e) => setFirm({ alipayAccount: e.target.value })} />
           </Field>
         </div>
       </div>
@@ -154,6 +162,7 @@ function OrdersPage() {
                     <p className="text-sm">{sheet.ref} · {show(agreementPhase(sheet, prepaid))}</p>
                     {sheet.signedName ? <p className="mt-1 text-sm text-muted">{t("signSigned")} · {sheet.signedName}</p> : null}
                     {sheet.firmSignedAt ? <p className="mt-1 text-sm text-muted">{t("countersign")} · {sheet.firmSigner}</p> : null}
+                    {sheet.claimedMethod ? <p className="mt-1 text-sm text-muted">{t("claimedVia")} · {show(sheet.claimedMethod)}</p> : null}
                     <a className="mt-2 inline-flex h-11 items-center text-sm underline decoration-rule underline-offset-4" href={`/sign?ref=${encodeURIComponent(sheet.ref)}`}>
                       {t("openSign")}
                     </a>
@@ -176,12 +185,20 @@ function OrdersPage() {
                 {lines.length > 0 ? (
                   <ul className="mt-4">
                     {lines.map((line) => (
-                      <li key={line.id} className="grid gap-2 border-t border-rule py-3 md:grid-cols-4 md:items-end">
+                      <li key={line.id} className="grid gap-2 border-t border-rule py-3 md:grid-cols-5 md:items-end">
                         <p className="text-sm">
                           {show(line.label)}
                           <span className="mt-1 block text-muted">{t("expected")} {yuan(line.expectedYuan)}</span>
                         </p>
-                        <p className="text-sm tabular-nums">{t("received")} {yuan(line.receivedYuan)}</p>
+                        <p className="text-sm tabular-nums">
+                          {t("received")} {yuan(line.receivedYuan)}
+                          {line.method ? <span className="mt-1 block text-muted">{t("savedVia")} {show(line.method)}</span> : null}
+                        </p>
+                        <CanonSelect
+                          value={draftMethod[line.id] ?? (sheet?.claimedMethod || "银行转账")}
+                          options={PAY_METHODS}
+                          onChange={(value) => setDraftMethod({ ...draftMethod, [line.id]: value as PayMethod })}
+                        />
                         <input
                           className={inputCls}
                           inputMode="numeric"
@@ -194,7 +211,7 @@ function OrdersPage() {
                           onClick={() => {
                             const raw = draftPay[line.id];
                             if (!raw) return;
-                            recordReceipt(line.id, Number(raw));
+                            recordReceipt(line.id, Number(raw), draftMethod[line.id] ?? (sheet?.claimedMethod || "银行转账"));
                           }}
                         >
                           {t("register")}
