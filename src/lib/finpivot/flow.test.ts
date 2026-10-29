@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { admissionReady, applyReversal, buildPlan, canDeliver, canStart, gateMove, serviceAllowed, settled, sopItems, sopReady } from "./flow.ts";
+import { admissionReady, applyReversal, buildPlan, canDeliver, canStart, evidenceFunnel, gateMove, handoffReady, qualifyReady, serviceAllowed, settled, sopItems, sopReady } from "./flow.ts";
 
 describe("service fee gates", () => {
   it("splits a per-order fee into 50% deposit and the rest", () => {
@@ -53,5 +53,14 @@ describe("service fee gates", () => {
     assert.equal(sopReady("出口财务包", []).ok, false);
     assert.equal(applyReversal(2000, 1500, "短").ok, false);
     assert.equal(applyReversal(2000, 1500, "回单重复登记，冲回").ok, true);
+    assert.equal(qualifyReady({ fit: "不适合", reason: "没有出口业务", at: "2026-10-29T00:00:00.000Z" }).ok, false);
+    assert.equal(qualifyReady({ fit: "适合", reason: "有在执行的出口合同", at: "2026-10-29T00:00:00.000Z" }).ok, true);
+    assert.equal(handoffReady({ version: "v1", customerConfirmedAt: "", closeoutNote: "已经对过账" }).ok, false);
+    const funnel = evidenceFunnel({
+      leads: [{ qualification: { fit: "适合", reason: "有在执行的出口合同", at: "2026-10-29" } }, {}],
+      clients: [{ leadId: "l1" }, {}],
+      orders: [{ status: "已交付" }, { status: "已交付", handoff: { version: "v1", customerConfirmedAt: "2026-10-29", closeoutNote: "款项与交付物已对上" } }],
+    });
+    assert.deepEqual(funnel, { judged: 1, fit: 1, filed: 1, delivered: 1 });
   });
 });

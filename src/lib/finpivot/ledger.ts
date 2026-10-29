@@ -1,4 +1,4 @@
-import { admissionReady, gateMove, reviewReady, serviceAllowed, sopReady, type Admission, type Billing, type OrderStatus, type PayKind } from "./flow.ts";
+import { admissionReady, gateMove, handoffReady, reviewReady, serviceAllowed, sopReady, type Admission, type Billing, type Handoff, type OrderStatus, type PayKind } from "./flow.ts";
 
 export type DeskOrder = {
   id: string;
@@ -8,6 +8,7 @@ export type DeskOrder = {
   product?: string;
   admission?: Admission;
   sop?: { id: string; done: boolean }[];
+  handoff?: Handoff;
 };
 
 export type DeskPay = {
@@ -17,6 +18,7 @@ export type DeskPay = {
   expectedYuan: number;
   receivedYuan: number;
   reversalReason?: string;
+  receiptRef?: string;
 };
 
 export type DeskItem = {
@@ -63,12 +65,16 @@ export function diffDesk(prev: DeskBody, next: DeskBody) {
       admitted,
       product,
       sopReady(product, order.sop).ok,
+      handoffReady(order.handoff).ok,
     );
     if (!move.ok) return move;
   }
   const prevPay = new Map(prev.payments.map((line) => [line.id, line]));
   for (const line of next.payments) {
     const before = prevPay.get(line.id);
+    if (before && line.receivedYuan > before.receivedYuan && (line.receiptRef?.trim().length ?? 0) < 4) {
+      return { ok: false, reason: "实收增加要记下回单号。" };
+    }
     if (before && line.receivedYuan < before.receivedYuan && (line.reversalReason?.trim().length ?? 0) < 8) {
       return { ok: false, reason: "实收不能直接改小。冲正要单独记录原因。" };
     }

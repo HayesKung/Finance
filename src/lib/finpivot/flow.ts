@@ -126,6 +126,46 @@ export function applyReversal(current: number, next: number, reason: string) {
   return { ok: true as const, receivedYuan: yuan, reason: "" };
 }
 
+export type Qualification = {
+  fit: "" | "适合" | "不适合";
+  reason: string;
+  at: string;
+};
+
+export type Handoff = {
+  version: string;
+  customerConfirmedAt: string;
+  closeoutNote: string;
+};
+
+export function qualifyReady(row: Qualification | undefined) {
+  if (!row || (row.fit !== "适合" && row.fit !== "不适合") || !row.at) return { ok: false, reason: "还没有资格判断。" };
+  if (row.reason.trim().length < 8) return { ok: false, reason: "资格判断要写明原因。" };
+  if (row.fit !== "适合") return { ok: false, reason: "判断为不适合，不能建档。" };
+  return { ok: true, reason: "" };
+}
+
+export function handoffReady(row: Handoff | undefined) {
+  if (!row || !/^v\d+$/.test(row.version.trim())) return { ok: false, reason: "交付包还没有版本号。" };
+  if (!row.customerConfirmedAt) return { ok: false, reason: "客户还没有确认这一版交付。" };
+  if (row.closeoutNote.trim().length < 8) return { ok: false, reason: "收尾对账还没写。" };
+  return { ok: true, reason: "" };
+}
+
+export function evidenceFunnel(input: {
+  leads: { qualification?: Qualification }[];
+  clients: { leadId?: string }[];
+  orders: { status: string; handoff?: Handoff }[];
+}) {
+  const judged = input.leads.filter((lead) => lead.qualification?.fit === "适合" || lead.qualification?.fit === "不适合");
+  return {
+    judged: judged.length,
+    fit: judged.filter((lead) => lead.qualification?.fit === "适合").length,
+    filed: input.clients.filter((client) => client.leadId).length,
+    delivered: input.orders.filter((order) => order.status === "已交付" && handoffReady(order.handoff).ok).length,
+  };
+}
+
 export function canStart(billing: Billing, lines: PayDraft[]) {
   if (lines.length === 0) return { ok: false, reason: "还没有收款计划。" };
   if (billing === "月度") {
@@ -182,6 +222,7 @@ export function gateMove(
   admitted = true,
   product = "出口财务包",
   sopOk = true,
+  handoffOk = true,
 ) {
   if (!NEXT[status].includes(next)) return { ok: false, reason: `不能从${status}改到${next}。` };
   if (next === "执行中" && !contractReady) return { ok: false, reason: "服务确认书还没双方签完，不能开工。" };
@@ -196,6 +237,7 @@ export function gateMove(
     if (!delivered.ok) return delivered;
     if (!reviewOk) return { ok: false, reason: "交付前要有编制人和另一名复核人。" };
     if (!sopOk) return { ok: false, reason: "工作底稿还没勾完。" };
+    if (!handoffOk) return { ok: false, reason: "交付版本、客户确认或收尾对账还不齐。" };
     return { ok: true, reason: "" };
   }
   if (next === "待收款" && lines.length === 0) return { ok: false, reason: "先生成收款计划。" };

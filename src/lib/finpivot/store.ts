@@ -43,14 +43,18 @@ import {
   buildPlan,
   deliverableNames,
   gateMove,
+  handoffReady,
+  qualifyReady,
   reviewReady,
   sopItems,
   sopReady,
   type Admission,
   type Billing,
   type ClientStatus,
+  type Handoff,
   type OrderStatus,
   type ProjectStatus,
+  type Qualification,
 } from "@/lib/finpivot/flow";
 
 export type Stage = (typeof STAGES)[number];
@@ -75,6 +79,8 @@ export type Lead = {
   note: string;
   consentPrivate: boolean;
   privateContact: string;
+  qualification?: Qualification;
+  block?: string;
 };
 
 export type Outreach = {
@@ -128,6 +134,7 @@ export type Order = {
   blockReason: string;
   admission?: Admission;
   sop?: { id: string; done: boolean }[];
+  handoff?: Handoff;
 };
 
 export type Payment = {
@@ -139,6 +146,7 @@ export type Payment = {
   receivedYuan: number;
   method: "" | PayMethod;
   reversalReason?: string;
+  receiptRef?: string;
 };
 
 export type Deliverable = {
@@ -246,13 +254,15 @@ type OsState = {
   updateClient: (id: string, patch: Partial<Client>) => void;
   removeClient: (id: string) => void;
   promoteLead: (leadId: string) => void;
+  setQualification: (leadId: string, patch: Partial<Qualification>) => void;
   addProject: (row: Omit<Project, "id">) => void;
   updateProject: (id: string, patch: Partial<Project>) => void;
   removeProject: (id: string) => void;
   addOrder: (row: OrderInput) => void;
   issuePlan: (orderId: string) => void;
   moveOrder: (orderId: string, status: OrderStatus) => void;
-  recordReceipt: (paymentId: string, yuan: number, method: "" | PayMethod) => void;
+  recordReceipt: (paymentId: string, yuan: number, method: "" | PayMethod, receiptRef: string) => void;
+  setHandoff: (orderId: string, patch: Partial<Handoff>) => void;
   setReview: (orderId: string, preparer: string, reviewer: string) => void;
   setAdmission: (orderId: string, patch: Partial<Admission>) => void;
   toggleSop: (orderId: string, id: string) => void;
@@ -602,6 +612,10 @@ export const useOs = create<OsState>()(
           if (s.clients.some((c) => c.leadId === leadId)) return s;
           const lead = s.leads.find((l) => l.id === leadId);
           if (!lead) return s;
+          const gate = qualifyReady(lead.qualification);
+          if (!gate.ok) {
+            return { leads: s.leads.map((item) => (item.id === leadId ? { ...item, block: gate.reason } : item)) };
+          }
           const client: Client = {
             id: uid(),
             leadId,
@@ -617,8 +631,21 @@ export const useOs = create<OsState>()(
             status: "潜在",
             note: lead.note,
           };
-          return { clients: [client, ...s.clients] };
+          return {
+            clients: [client, ...s.clients],
+            leads: s.leads.map((item) => (item.id === leadId ? { ...item, block: "" } : item)),
+          };
         }),
+      setQualification: (leadId, patch) =>
+        set((s) => ({
+          leads: s.leads.map((lead) => {
+            if (lead.id !== leadId) return lead;
+            const current = lead.qualification ?? { fit: "" as const, reason: "", at: "" };
+            const qualification = { ...current, ...patch };
+            if (patch.fit) qualification.at = new Date().toISOString();
+            return { ...lead, qualification, block: "" };
+          }),
+        })),
       addProject: (row) => set((s) => ({ projects: [{ ...row, id: uid() }, ...s.projects] })),
       updateProject: (id, patch) =>
         set((s) => ({
@@ -690,25 +717,47 @@ export const useOs = create<OsState>()(
           const reviewOk = reviewReady(items).ok;
           const admitted = admissionReady(order.admission).ok;
           const sopOk = sopReady(order.product, order.sop).ok;
-          const move = gateMove(order.status, status, order.billing, lines, done, contractReady, reviewOk, admitted, order.product, sopOk);
+          const hand = handoffReady(order.handoff);
+          const move = gateMove(
+            order.status,
+            status,
+            order.billing,
+            lines,
+            done,
+            contractReady,
+            reviewOk,
+            admitted,
+            order.product,
+            sopOk,
+            hand.ok,
+          );
+          const reason = move.ok ? "" : !hand.ok && status === "已交付" ? hand.reason : move.reason;
           return {
             orders: s.orders.map((o) =>
               o.id === orderId
                 ? move.ok
                   ? { ...o, status, blockReason: "" }
-                  : { ...o, blockReason: move.reason }
+                  : { ...o, blockReason: reason }
                 : o,
             ),
           };
         }),
-      recordReceipt: (paymentId, yuan, method) =>
+      recordReceipt: (paymentId, yuan, method, receiptRef) =>
         set((s) => {
           const payment = s.payments.find((item) => item.id === paymentId);
           if (!payment) return s;
+          const ref = receiptRef.trim();
+          if (ref.length < 4) {
+            return {
+              orders: s.orders.map((order) =>
+                order.id === payment.orderId ? { ...order, blockReason: "实收增加要记下回单号。" } : order,
+              ),
+            };
+          }
           const applied = applyReceipt(payment.receivedYuan, yuan);
           return {
             payments: s.payments.map((item) =>
-              item.id === paymentId && applied.ok ? { ...item, receivedYuan: applied.receivedYuan, method } : item,
+              item.id === paymentId && applied.ok ? { ...item, receivedYuan: applied.receivedYuan, method, receiptRef: ref } : item,
             ),
             orders: s.orders.map((order) =>
               order.id === payment.orderId ? { ...order, blockReason: applied.ok ? "" : applied.reason } : order,
@@ -726,6 +775,14 @@ export const useOs = create<OsState>()(
             ),
           };
         }),
+      setHandoff: (orderId, patch) =>
+        set((s) => ({
+          orders: s.orders.map((order) => {
+            if (order.id !== orderId) return order;
+            const current = order.handoff ?? { version: "", customerConfirmedAt: "", closeoutNote: "" };
+            return { ...order, handoff: { ...current, ...patch }, blockReason: "" };
+          }),
+        })),
       setAdmission: (orderId, patch) =>
         set((s) => ({
           orders: s.orders.map((order) => {

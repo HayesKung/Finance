@@ -26,6 +26,7 @@ function OrdersPage() {
   const moveOrder = useOs((s) => s.moveOrder);
   const recordReceipt = useOs((s) => s.recordReceipt);
   const setReview = useOs((s) => s.setReview);
+  const setHandoff = useOs((s) => s.setHandoff);
   const setAdmission = useOs((s) => s.setAdmission);
   const toggleSop = useOs((s) => s.toggleSop);
   const reverseReceipt = useOs((s) => s.reverseReceipt);
@@ -49,6 +50,8 @@ function OrdersPage() {
   const [reviewName, setReviewName] = useState<Record<string, { preparer: string; reviewer: string }>>({});
   const [scopeDraft, setScopeDraft] = useState<Record<string, string>>({});
   const [reversal, setReversal] = useState<Record<string, { yuan: string; reason: string }>>({});
+  const [voucher, setVoucher] = useState<Record<string, string>>({});
+  const [closeout, setCloseout] = useState<Record<string, string>>({});
 
   useEffect(() => {
     let stop = false;
@@ -275,6 +278,22 @@ function OrdersPage() {
                     </li>
                   ))}
                 </ul>
+                <div className="mt-3 grid gap-3 md:grid-cols-[8rem_1fr_auto] md:items-end">
+                  <Field label={t("handoffVersion")}>
+                    <input className={inputCls} value={o.handoff?.version ?? ""} onChange={(e) => setHandoff(o.id, { version: e.target.value.trim() })} />
+                  </Field>
+                  <Field label={t("closeoutNote")}>
+                    <input
+                      className={inputCls}
+                      value={closeout[o.id] ?? o.handoff?.closeoutNote ?? ""}
+                      onChange={(e) => setCloseout({ ...closeout, [o.id]: e.target.value })}
+                      onBlur={() => setHandoff(o.id, { closeoutNote: closeout[o.id] ?? o.handoff?.closeoutNote ?? "" })}
+                    />
+                  </Field>
+                  <Btn tone={o.handoff?.customerConfirmedAt ? "seal" : "paper"} onClick={() => setHandoff(o.id, { customerConfirmedAt: new Date().toISOString() })}>
+                    {t("handoffConfirm")}
+                  </Btn>
+                </div>
                 {sheet ? (
                   <div className="mt-3 border border-rule p-3">
                     <p className="text-sm">{sheet.ref} · {show(agreementPhase(sheet, prepaid))}</p>
@@ -353,12 +372,18 @@ function OrdersPage() {
                           placeholder={t("soFar")}
                           onChange={(e) => setDraftPay({ ...draftPay, [line.id]: e.target.value.replace(/[^\d]/g, "") })}
                         />
+                        <input
+                          className={inputCls}
+                          value={voucher[line.id] ?? line.receiptRef ?? ""}
+                          placeholder={t("receiptRef")}
+                          onChange={(e) => setVoucher({ ...voucher, [line.id]: e.target.value })}
+                        />
                         <Btn
                           tone="paper"
                           onClick={() => {
                             const raw = draftPay[line.id];
                             if (!raw) return;
-                            recordReceipt(line.id, Number(raw), draftMethod[line.id] ?? (sheet?.claimedMethod || "银行转账"));
+                            recordReceipt(line.id, Number(raw), draftMethod[line.id] ?? (sheet?.claimedMethod || "银行转账"), voucher[line.id] ?? line.receiptRef ?? "");
                           }}
                         >
                           {t("register")}

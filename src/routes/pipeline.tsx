@@ -5,7 +5,7 @@ import { OUTREACH_RESULTS, PRODUCTS, SOURCES, STAGES } from "@/lib/finpivot/copy
 import { canon } from "@/lib/finpivot/glossary";
 import { useI18n } from "@/lib/finpivot/locale";
 import { leadCount } from "@/lib/finpivot/ui";
-import { BILLINGS, type Billing } from "@/lib/finpivot/flow";
+import { BILLINGS, evidenceFunnel, type Billing } from "@/lib/finpivot/flow";
 import { needToProduct } from "@/lib/finpivot/inquiry";
 import { pushSheet } from "@/lib/finpivot/publish-client";
 import { useOs, type Lead, type Outreach, type Source, type Stage } from "@/lib/finpivot/store";
@@ -47,12 +47,15 @@ function PipelinePage() {
   const updateLead = useOs((s) => s.updateLead);
   const removeLead = useOs((s) => s.removeLead);
   const promoteLead = useOs((s) => s.promoteLead);
+  const setQualification = useOs((s) => s.setQualification);
   const clients = useOs((s) => s.clients);
+  const orders = useOs((s) => s.orders);
   const importLeads = useOs((s) => s.importLeads);
   const outreach = useOs((s) => s.outreach);
   const addOutreach = useOs((s) => s.addOutreach);
   const removeOutreach = useOs((s) => s.removeOutreach);
   const [form, setForm] = useState(empty);
+  const [reasonDraft, setReasonDraft] = useState<Record<string, string>>({});
   const [q, setQ] = useState("");
   const [stage, setStage] = useState<Stage | "全部">("全部");
   const [warn, setWarn] = useState("");
@@ -65,6 +68,7 @@ function PipelinePage() {
     next: "",
   });
 
+  const counts = evidenceFunnel({ leads, clients, orders });
   const shown = useMemo(
     () =>
       leads.filter((l) => {
@@ -331,6 +335,9 @@ function PipelinePage() {
       </div>
 
       <ul className="mt-4 border-t border-ink">
+        <li className="border-b border-rule py-3 text-sm text-muted">
+          {t("funnelNote")} {counts.judged} / {counts.fit} / {counts.filed} / {counts.delivered}
+        </li>
         {shown.length === 0 ? (
           <li className="border-b border-rule py-6 text-sm text-muted">{t("emptyLeads")}</li>
         ) : (
@@ -346,10 +353,23 @@ function PipelinePage() {
                 <p className="text-muted">{l.publicChannel || t("noChannel")}</p>
                 <p>{t("nextPrefix")}：{l.next || t("unwritten")} {l.nextDate}</p>
                 {l.consentPrivate ? <p className="text-seal">{t("privateKept")}</p> : null}
+                {l.block ? <p className="text-seal">{show(l.block)}</p> : null}
+                <input
+                  className={inputCls}
+                  value={reasonDraft[l.id] ?? l.qualification?.reason ?? ""}
+                  placeholder={t("qualifyReason")}
+                  onChange={(e) => setReasonDraft({ ...reasonDraft, [l.id]: e.target.value })}
+                />
               </div>
               <div className="flex flex-wrap items-start gap-2 md:col-span-4">
                 <CanonSelect className="h-11 border border-rule bg-paper px-2 text-sm" value={l.stage} options={STAGES} onChange={(value) => updateLead(l.id, { stage: value as Stage })} />
                 <Btn tone="paper" onClick={() => removeLead(l.id)}>{t("remove")}</Btn>
+                <Btn tone={l.qualification?.fit === "适合" ? "seal" : "paper"} onClick={() => setQualification(l.id, { fit: "适合", reason: reasonDraft[l.id] ?? l.qualification?.reason ?? "" })}>
+                  {t("qualifyFit")}
+                </Btn>
+                <Btn tone={l.qualification?.fit === "不适合" ? "seal" : "paper"} onClick={() => setQualification(l.id, { fit: "不适合", reason: reasonDraft[l.id] ?? l.qualification?.reason ?? "" })}>
+                  {t("qualifyNo")}
+                </Btn>
                 <Btn tone={clients.some((c) => c.leadId === l.id) ? "seal" : "paper"} onClick={() => promoteLead(l.id)}>
                   {clients.some((c) => c.leadId === l.id) ? t("promoted") : t("promote")}
                 </Btn>

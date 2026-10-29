@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { diffDesk } from "./ledger.ts";
-import { applyReceipt, reviewReady, sopItems } from "./flow.ts";
+import { applyReceipt, handoffReady, reviewReady, sopItems } from "./flow.ts";
 
 const order = {
   id: "o1",
@@ -44,7 +44,8 @@ describe("server desk checks", () => {
     assert.equal(reviewReady(items).ok, false);
     const ready = [{ ...items[0], reviewer: "支撑" }];
     const sop = sopItems("出口财务包").map((id) => ({ id, done: true }));
-    const running = { ...order, status: "执行中" as const, product: "出口财务包", sop };
+    const handoff = { version: "v1", customerConfirmedAt: "2026-10-29T00:00:00.000Z", closeoutNote: "款项与交付物已对上" };
+    const running = { ...order, status: "执行中" as const, product: "出口财务包", sop, handoff };
     const prev = { orders: [running], payments: lines.map((line) => ({ ...line, receivedYuan: 2000 })), deliverables: ready };
     const next = { ...prev, orders: [{ ...running, status: "已交付" as const }], agreements: [{ orderId: "o1", signedAt: "a", firmSignedAt: "b" }] };
     assert.equal(diffDesk({ ...prev, deliverables: items }, { ...next, deliverables: items }).ok, false);
@@ -59,5 +60,19 @@ describe("server desk checks", () => {
       agreements: [{ orderId: "o1", signedAt: "a", firmSignedAt: "b" }],
     };
     assert.match(diffDesk(prev, next).reason, /授权|范围/);
+  });
+
+  it("rejects a higher receipt without a voucher number and delivery without a handoff", () => {
+    const prev = { orders: [order], payments: lines, deliverables: [] };
+    const raised = { ...prev, payments: [{ ...lines[0], receivedYuan: 2000, receiptRef: "" }, { ...lines[1], receivedYuan: 100 }] };
+    assert.match(diffDesk(prev, raised).reason, /回单号/);
+    const withRef = { ...prev, payments: [{ ...lines[0], receiptRef: "HZ01" }, { ...lines[1], receivedYuan: 100, receiptRef: "HZ02" }] };
+    assert.equal(diffDesk(prev, withRef).ok, true);
+    const sop = sopItems("出口财务包").map((id) => ({ id, done: true }));
+    const running = { ...order, status: "执行中" as const, product: "出口财务包", sop };
+    const open = { orders: [running], payments: lines.map((line) => ({ ...line, receivedYuan: 2000 })), deliverables: [{ orderId: "o1", done: true, preparer: "海", reviewer: "支撑", reviewedAt: "2026-10-29T00:00:00.000Z" }] };
+    const closed = { ...open, orders: [{ ...running, status: "已交付" as const }] };
+    assert.equal(diffDesk(open, closed).ok, false);
+    assert.equal(handoffReady(running.handoff).ok, false);
   });
 });

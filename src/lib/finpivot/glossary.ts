@@ -163,6 +163,14 @@ const EN: Record<string, string> = {
   "没有这条服务的底稿。": "This service has no workpaper.",
   "冲正要写明原因。": "A reversal needs a written reason.",
   "冲正金额不正确。": "The reversal amount is not valid.",
+  "还没有资格判断。": "There is no qualification decision.",
+  "资格判断要写明原因。": "The qualification decision needs a reason.",
+  "判断为不适合，不能建档。": "Marked not a fit, so no client file.",
+  "交付包还没有版本号。": "The delivery pack has no version.",
+  "客户还没有确认这一版交付。": "The client has not confirmed this delivery version.",
+  "收尾对账还没写。": "The close-out reconciliation is not written.",
+  "交付版本、客户确认或收尾对账还不齐。": "Delivery version, client confirmation, or close-out is missing.",
+  "实收增加要记下回单号。": "A receipt increase needs the voucher number.",
 };
 
 const ZH = new Map(Object.entries(EN).map(([zh, en]) => [en.toLowerCase(), zh]));
