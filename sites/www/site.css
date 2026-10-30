@@ -1,0 +1,68 @@
+:root {
+  color-scheme: light;
+  --ink: #1c1915;
+  --muted: #5c564c;
+  --paper: #f3efe6;
+  --card: #fffdf8;
+  --line: #d9d0c1;
+  --seal: #8a3b32;
+  --pine: #234237;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(138, 59, 50, 0.08), transparent 32%),
+    var(--paper);
+  color: var(--ink);
+  font: 18px/1.65 "Segoe UI", "PingFang SC", "Noto Sans SC", sans-serif;
+}
+a { color: inherit; }
+a:focus-visible, button:focus-visible { outline: 3px solid var(--seal); outline-offset: 3px; }
+.skip {
+  position: absolute;
+  left: 12px;
+  top: -40px;
+  background: var(--ink);
+  color: white;
+  padding: 8px 12px;
+}
+.skip:focus { top: 12px; }
+header, main, footer { width: min(1120px, calc(100% - 32px)); margin: 0 auto; }
+header { display: flex; justify-content: space-between; gap: 24px; align-items: end; padding: 28px 0 12px; }
+.brand { text-decoration: none; }
+.brand strong { display: block; font-family: Georgia, "Songti SC", serif; font-size: 22px; }
+nav { display: flex; flex-wrap: wrap; gap: 8px 16px; }
+nav a { text-decoration: none; }
+nav a[aria-current="page"] { border-bottom: 2px solid var(--seal); }
+h1, h2, h3 { font-family: Georgia, "Songti SC", serif; font-weight: 500; line-height: 1.25; }
+h1 { font-size: clamp(40px, 6vw, 72px); margin: 8px 0 12px; }
+h2 { font-size: clamp(28px, 3vw, 40px); margin: 0 0 8px; }
+.kicker { letter-spacing: 0.12em; text-transform: uppercase; font-size: 13px; color: var(--seal); }
+.hero, .split { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 28px; align-items: center; }
+.hero img, .module img, .diagram { width: 100%; height: auto; border: 1px solid var(--line); background: var(--card); }
+.grid, .modules { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.card, .note, .module { border: 1px solid var(--line); background: var(--card); padding: 18px 20px; }
+.card { text-decoration: none; display: block; }
+.card:hover { border-color: var(--seal); }
+.note { border-left: 4px solid var(--seal); }
+ol.steps { padding-left: 20px; }
+ol.steps li { margin: 10px 0; }
+details { border-bottom: 1px solid var(--line); padding: 12px 0; }
+summary { cursor: pointer; font-weight: 600; }
+button {
+  background: var(--pine);
+  color: white;
+  border: 0;
+  padding: 10px 14px;
+  font: inherit;
+  cursor: pointer;
+}
+.actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+footer { padding: 36px 0 56px; color: var(--muted); font-size: 15px; }
+@media (max-width: 800px) {
+  header, .hero, .split, .grid, .modules { display: block; }
+  nav { margin-top: 12px; }
+  .hero img, .module, .card { margin-top: 16px; }
+}

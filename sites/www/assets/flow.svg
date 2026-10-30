@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 220">
+  <rect width="640" height="220" fill="#f7f3ea"/>
+  <g fill="#fffdf8" stroke="#1c1915" stroke-width="2" font-family="Georgia, serif" font-size="16">
+    <rect x="24" y="70" width="120" height="64"/>
+    <rect x="188" y="70" width="120" height="64"/>
+    <rect x="352" y="70" width="120" height="64"/>
+    <rect x="516" y="70" width="100" height="64"/>
+  </g>
+  <path d="M144 102 H188 M308 102 H352 M472 102 H516" stroke="#8a3b32" stroke-width="2"/>
+  <text x="48" y="108" fill="#1c1915" font-family="Georgia, serif" font-size="16">Æe</text>
+  <text x="212" y="108" fill="#1c1915" font-family="Georgia, serif" font-size="16">¥÷</text>
+  <text x="376" y="108" fill="#1c1915" font-family="Georgia, serif" font-size="16">8Œ</text>
+  <text x="536" y="108" fill="#1c1915" font-family="Georgia, serif" font-size="16">¤Ø</text>
+</svg>

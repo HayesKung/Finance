@@ -10,15 +10,9 @@ describe("settlement boundaries", () => {
     assert.equal(evidence.provider, "sandbox");
   });
 
-  it("lets only the owner confirm a bank receipt once", () => {
-    const seen = new Set<string>();
-    const row = { role: "owner" as const, claimIsCash: false, key: "bank-1", seen, amountYuan: 500, expectedYuan: 500 };
-    assert.equal(confirmBankReceipt({ ...row, claimIsCash: true }).ok, false);
-    assert.equal(confirmBankReceipt({ ...row, role: "support" }).ok, false);
-    const first = confirmBankReceipt(row);
-    const second = confirmBankReceipt(row);
-    assert.equal(first.ok && first.duplicate, false);
-    assert.equal(second.ok && second.duplicate, true);
-    assert.equal(seen.size, 1);
+  it("does not treat an in-memory set as a bank receipt", () => {
+    const refused = confirmBankReceipt();
+    assert.equal(refused.ok, false);
+    assert.match(refused.reason, /账务表/);
   });
 });
