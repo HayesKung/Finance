@@ -23,12 +23,27 @@ const nav = [
 ];
 
 function contactActions() {
-  return `<div class="actions">
-    <a href="mailto:${MAIL}">${MAIL}</a>
-    <a href="https://wpa.qq.com/msgrd?v=3&uin=${QQ}&site=qq&menu=yes">在电脑上打开 QQ ${QQ}</a>
-    <a href="mqqwpa://im/chat?chat_type=wpa&uin=${QQ}&version=1&src_type=web&web_src=finanpivot.com">在手机上打开 QQ</a>
-    <button type="button" data-copy="${QQ}">复制 QQ 号 ${QQ}</button>
-    <span id="copy-status" role="status"></span>
+  const web = `https://wpa.qq.com/msgrd?v=3&uin=${QQ}&site=qq&menu=yes`;
+  const desktop = `tencent://message/?uin=${QQ}&amp;Site=finanpivot.com&amp;Menu=yes`;
+  const mobile = `mqqwpa://im/chat?chat_type=wpa&amp;uin=${QQ}&amp;version=1&amp;src_type=web&amp;web_src=finanpivot.com`;
+  return `<div class="contact-group">
+    <div class="contact-row">
+      <a class="contact-card" href="mailto:${MAIL}">
+        <span class="label" data-en="Email">邮件联系</span>
+        <strong>${MAIL}</strong>
+      </a>
+      <div class="contact-card">
+        <a class="qq-open" href="${web}" data-desktop="${desktop}" data-mobile="${mobile}">
+          <span class="label" data-en="QQ">QQ 联系</span>
+          <strong data-en="Open QQ">单击打开 QQ</strong>
+        </a>
+        <p class="qq-fallback" hidden>
+          <span>${QQ}</span>
+          <button type="button" data-copy="${QQ}" data-en="Copy">复制</button>
+          <span class="copy-status" role="status"></span>
+        </p>
+      </div>
+    </div>
   </div>`;
 }
 
@@ -44,8 +59,8 @@ export const pages = [
     body: `<section class="hero">
       <div>
         <p class="kicker">Global Finance & Business Advisory</p>
-        <h1 data-en="Make cross-border finance easier to see.">让跨境财务更清晰，让企业经营更稳健。</h1>
-        <p class="lede" data-en="FinanPivot helps export, overseas-project and cross-border companies keep documents, receipts and management reports in one agreed file.">FinanPivot 为开展出口贸易、海外工程项目及跨境经营的企业提供财务运营支持、项目财务管理、跨境结算协同和专业财务外包服务。</p>
+        <h1 data-en="Clearer cross-border finance, for clearer decisions.">让跨境财务更清晰，让经营决策更有依据。</h1>
+        <p class="lede" data-en="Finance operations, project ledgers, settlement support and management reports for export, overseas-project and cross-border companies.">为出口贸易、海外项目和跨境经营企业提供财务运营、项目台账、结算协同与管理报告支持。</p>
         <div class="btnrow">
           <a class="btn solid" href="start.html" data-en="Prepare an inquiry">准备咨询</a>
           <a class="btn" href="how-we-work.html" data-en="See the path">看完整流程</a>
@@ -60,10 +75,10 @@ export const pages = [
     <section class="band">
       <h2 data-en="Four kinds of work">四项工作</h2>
       <div class="grid">
-        <a class="card" href="services.html#export"><img class="shot" src="assets/export.svg" alt="${assetAlt["export.svg"]}"><div><strong data-en="Export finance operations">出口企业财务运营支持</strong><p data-en="Orders, documents and receipts in one ledger.">把订单、单据和收付款放进同一本台账。</p></div></a>
-        <a class="card" href="services.html#project"><img class="shot" src="assets/project.svg" alt="${assetAlt["project.svg"]}"><div><strong data-en="Overseas project finance">海外工程与项目财务管理</strong><p data-en="Budget, milestones, retention and cash.">跟踪预算、里程碑、质保金和现金流。</p></div></a>
-        <a class="card" href="services.html#collect"><img class="shot" src="assets/collect.svg" alt="${assetAlt["collect.svg"]}"><div><strong data-en="Settlement and receivables">跨境结算与应收账款专项</strong><p data-en="Match differences, aging and follow-up.">核对到账差异、账龄和跟进事项。</p></div></a>
-        <a class="card" href="services.html#report"><img class="shot" src="assets/report.svg" alt="${assetAlt["report.svg"]}"><div><strong data-en="Outsourced reporting">财务外包与管理报告</strong><p data-en="A management summary on the agreed cycle. Judgment stays with an authorized person.">按约定周期交出管理摘要。关键判断由授权人员负责。</p></div></a>
+        <a class="card" href="services.html#export"><img class="shot" src="assets/export.svg" alt="${assetAlt["export.svg"]}"><div><strong data-en="Export finance operations">出口企业财务运营</strong><p data-en="Orders, documents, receivables and receipts in one file.">订单、单据、应收与收款记录协同管理。</p></div></a>
+        <a class="card" href="services.html#project"><img class="shot" src="assets/project.svg" alt="${assetAlt["project.svg"]}"><div><strong data-en="Overseas project finance">海外项目财务管理</strong><p data-en="Budget, progress, retention and cash.">跟踪项目预算、进度、质保金与现金流。</p></div></a>
+        <a class="card" href="services.html#collect"><img class="shot" src="assets/collect.svg" alt="${assetAlt["collect.svg"]}"><div><strong data-en="Settlement and receivables">跨境结算与应收管理</strong><p data-en="Receipt differences, aging and follow-up.">核对到账差异、应收账龄与跟进事项。</p></div></a>
+        <a class="card" href="services.html#report"><img class="shot" src="assets/report.svg" alt="${assetAlt["report.svg"]}"><div><strong data-en="Outsourced reporting">财务外包与管理报告</strong><p data-en="Books and a management note on the agreed cycle.">按约定周期整理账务资料与经营分析。</p></div></a>
       </div>
     </section>
     <section class="band">
@@ -86,10 +101,10 @@ export const pages = [
     title: "服务",
     description: "FinanPivot 的四项服务：出口财务运营、海外项目财务、跨境结算专项、财务外包与管理报告。",
     body: `<h1 data-en="Four services">四项服务</h1>
-    <article class="split" id="export"><img src="assets/export.svg" alt="${assetAlt["export.svg"]}"><div class="pad"><h2 data-en="Export finance operations">出口企业财务运营支持</h2><p data-en="For export, supply-chain and trade teams. Documents, receivable differences, and reports by customer, order, currency and contract batch.">适用出口贸易、跨境供应链和外贸团队。工作包括单据归集、应收与到账差异、收汇结汇资料整理，以及按客户、订单、币种和合同批次形成管理报表。</p><p data-en="You receive a file, a match sheet, a difference list, an aging list and a monthly note. We do not replace customs, a bank or a tax approval.">交付：资料包、匹配表、差异清单、账龄表、月度摘要。不代替报关、银行或税务审批。</p></div></article>
-    <article class="split" id="project"><img src="assets/project.svg" alt="${assetAlt["project.svg"]}"><div class="pad"><h2 data-en="Overseas project finance">海外工程与项目财务管理</h2><p data-en="For overseas contracting and project companies. Budget, contract value, milestones, advances, progress payments, retention and variations.">适用海外工程承包、项目型企业和跨境设备或工程服务商。工作包括预算、合同金额、里程碑、预付款、进度款、质保金和变更签证的台账，以及多币种资金计划和项目月报。</p><p data-en="We do not replace an engineering, legal or tax conclusion, and we do not hold client money.">不代替工程质量、法律或税务结论，不托管客户资金。</p></div></article>
-    <article class="split" id="collect"><img src="assets/collect.svg" alt="${assetAlt["collect.svg"]}"><div class="pad"><h2 data-en="Settlement and receivables">跨境结算与应收账款专项</h2><p data-en="Match the contract, the invoice, the shipment or service record, and the bank lines. List overdue items and currency differences.">把合同、发票、出货或服务记录和银行流水对上。整理逾期事项、跨币种差异和跟进计划。</p><p data-en="We do not promise collection, and we do not sue, chase as lawyers, or pay money out.">不承诺债务回收，不提供诉讼、法律催收或资金支付服务。</p></div></article>
-    <article class="split" id="report"><img src="assets/report.svg" alt="${assetAlt["report.svg"]}"><div class="pad"><h2 data-en="Outsourced reporting">财务外包与管理报告</h2><p data-en="For a company without a full internal finance team: files, a ledger, a monthly summary and a note on what to keep.">为没有完整内部财务团队的企业做资料归集、台账、月度汇总和流程留痕建议。</p><p data-en="Bookkeeping, audit, tax agency or a payment license is accepted only when the firm is qualified, or a qualified firm does that part.">需要会计代理、审计、税务代理或支付许可的事项，只有在运营主体具备资质或由合资格机构提供时才承接。</p></div></article>
+    <article class="split" id="export"><img src="assets/export.svg" alt="${assetAlt["export.svg"]}"><div class="pad"><h2 data-en="Export finance operations">出口企业财务运营</h2><p data-en="Orders, documents, receivables and receipts in one file.">订单、单据、应收与收款记录协同管理。</p><p data-en="We do not replace customs, a bank or a tax approval.">不代替报关、银行或税务审批。</p></div></article>
+    <article class="split" id="project"><img src="assets/project.svg" alt="${assetAlt["project.svg"]}"><div class="pad"><h2 data-en="Overseas project finance">海外项目财务管理</h2><p data-en="Budget, progress, retention and cash.">跟踪项目预算、进度、质保金与现金流。</p><p data-en="We do not replace an engineering, legal or tax conclusion, and we do not hold client money.">不代替工程质量、法律或税务结论，不托管客户资金。</p></div></article>
+    <article class="split" id="collect"><img src="assets/collect.svg" alt="${assetAlt["collect.svg"]}"><div class="pad"><h2 data-en="Settlement and receivables">跨境结算与应收管理</h2><p data-en="Receipt differences, aging and follow-up.">核对到账差异、应收账龄与跟进事项。</p><p data-en="We do not promise collection, and we do not sue or pay money out.">不承诺债务回收，不提供诉讼或资金支付服务。</p></div></article>
+    <article class="split" id="report"><img src="assets/report.svg" alt="${assetAlt["report.svg"]}"><div class="pad"><h2 data-en="Outsourced reporting">财务外包与管理报告</h2><p data-en="Books and a management note on the agreed cycle.">按约定周期整理账务资料与经营分析。</p><p data-en="Licensed accounting, audit, tax or payment work is accepted only when a qualified firm does it.">需要执业资质的事项，只有在主体具备资质或由合资格机构提供时才承接。</p></div></article>
     <p><a class="btn solid" href="start.html" data-en="Prepare an inquiry">准备咨询</a></p>`,
   },
   {
@@ -237,7 +252,7 @@ export function renderPage(page) {
 <main id="content">${page.body}</main>
 <footer>
   <p>Financial Clarity. Business Forward.</p>
-  <p>联系：<a href="mailto:${MAIL}">${MAIL}</a> · <a href="contact.html">QQ ${QQ}</a></p>
+  <p><a href="mailto:${MAIL}">${MAIL}</a> · <a href="contact.html" data-en="Contact">联系</a></p>
   <p><a href="privacy.html">隐私</a> · <a href="terms.html">条款</a></p>
   <p>本网站介绍服务范围，不构成法律、审计、投资或税务意见。正式工作以书面合同为准。</p>
 </footer>

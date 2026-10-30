@@ -81,7 +81,7 @@ h2 { font-size: clamp(28px, 3vw, 40px); margin: 0 0 8px; }
   border: 1px solid var(--line);
 }
 figcaption, .quiet { color: var(--muted); font-size: 14px; }
-.btnrow, .actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 16px; }
+.btnrow { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 16px; }
 .btn {
   display: inline-flex;
   align-items: center;
@@ -91,15 +91,31 @@ figcaption, .quiet { color: var(--muted); font-size: 14px; }
   border: 1px solid var(--ink);
 }
 .btn.solid { background: var(--ink); color: #f6f1e7; }
-.actions a, .actions button {
-  background: transparent;
-  color: var(--pine);
-  border: 0;
-  border-bottom: 1px solid var(--pine);
-  padding: 0;
-  font: inherit;
-  cursor: pointer;
+.contact-group { margin-top: 18px; }
+.contact-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.contact-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  min-height: 96px;
+  padding: 16px 18px;
+  background: var(--card);
+  border: 1px solid var(--line);
   text-decoration: none;
+}
+.qq-open { display: flex; flex-direction: column; gap: 4px; min-height: 44px; text-decoration: none; }
+.contact-card .label { font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--seal); }
+.qq-fallback { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 10px 0 0; }
+.qq-fallback[hidden] { display: none; }
+.qq-fallback button {
+  border: 1px solid var(--ink);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  min-height: 36px;
+  padding: 0 10px;
+  cursor: pointer;
 }
 .band { margin: 28px 0; }
 .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
@@ -170,6 +186,6 @@ footer { padding: 28px 0 64px; color: var(--muted); font-size: 14px; }
 @media (max-width: 860px) {
   .top { align-items: flex-start; flex-wrap: wrap; }
   nav { margin-left: 0; width: 100%; }
-  .hero, .grid, .split, .brief, .path { display: grid; grid-template-columns: 1fr; }
+  .hero, .grid, .split, .brief, .path, .contact-row { display: grid; grid-template-columns: 1fr; }
   .path { grid-template-columns: 1fr 1fr; }
 }
