@@ -12,9 +12,16 @@ describe("public website artifact", () => {
     const manifest = readFileSync("dist/www/assets-manifest.json", "utf8");
     assert.match(page, /让跨境财务更清晰/);
     assert.match(page, /admin@finanpivot.com/);
+    assert.match(page, /让经营决策更有依据/);
+    assert.match(page, /订单、单据、应收与收款记录协同管理/);
+    assert.match(contact, /class="contact-row"/);
     assert.match(contact, /https:\/\/wpa\.qq\.com\/msgrd\?v=3&uin=3942114211/);
-    assert.match(contact, /mqqwpa:\/\/im\/chat/);
+    assert.match(contact, /data-desktop="tencent:\/\/message\/\?uin=3942114211/);
+    assert.match(contact, /data-mobile="mqqwpa:\/\/im\/chat/);
+    assert.match(contact, /class="qq-fallback" hidden/);
     assert.match(contact, /data-copy="3942114211"/);
+    assert.equal(contact.includes("在电脑上打开"), false);
+    assert.equal(contact.includes("在手机上打开"), false);
     assert.equal(contact.includes("<form"), false);
     assert.equal(page.includes("DATABASE_URL"), false);
     assert.equal(readFileSync("dist/www/faq.html", "utf8").includes("电子合同"), true);

@@ -1,7 +1,22 @@
+document.querySelectorAll(".qq-open").forEach((link) => {
+  link.addEventListener("click", (event) => {
+    const card = link.closest(".contact-card");
+    const fallback = card?.querySelector(".qq-fallback");
+    const coarse = window.matchMedia("(pointer: coarse)").matches;
+    const protocol = coarse ? link.dataset.mobile : link.dataset.desktop;
+    if (!protocol || !fallback) return;
+    event.preventDefault();
+    window.location.href = protocol;
+    window.setTimeout(() => {
+      if (document.visibilityState === "visible") fallback.hidden = false;
+    }, 1200);
+  });
+});
+
 document.querySelectorAll("[data-copy]").forEach((button) => {
   button.addEventListener("click", async () => {
     const value = button.getAttribute("data-copy") || "";
-    const status = document.querySelector("#copy-status");
+    const status = button.parentElement?.querySelector(".copy-status");
     try {
       await navigator.clipboard.writeText(value);
     } catch {
