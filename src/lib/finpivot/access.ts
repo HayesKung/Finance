@@ -1,7 +1,18 @@
 import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 
 export type Role = "owner" | "support";
-export type StaffAction = "publish" | "readStaff" | "saveChannel" | "revoke" | "saveDesk" | "readDesk";
+export type StaffAction =
+  | "publish"
+  | "readStaff"
+  | "saveChannel"
+  | "revoke"
+  | "saveDesk"
+  | "readDesk"
+  | "confirmReceipt"
+  | "changePrice"
+  | "reverseEntry"
+  | "refund"
+  | "issueDelivery";
 
 export const SESSION_MS = 12 * 60 * 60 * 1000;
 export const TOKEN_MS = 14 * 24 * 60 * 60 * 1000;
@@ -37,9 +48,19 @@ export function matchRole(password: string, owner: string, support: string): Rol
   return null;
 }
 
+const OWNER_ONLY = new Set<StaffAction>([
+  "saveChannel",
+  "revoke",
+  "confirmReceipt",
+  "changePrice",
+  "reverseEntry",
+  "refund",
+  "issueDelivery",
+]);
+
 export function can(role: Role | null, action: StaffAction) {
   if (role !== "owner" && role !== "support") return false;
-  if (action === "saveChannel" || action === "revoke") return role === "owner";
+  if (OWNER_ONLY.has(action)) return role === "owner";
   return true;
 }
 
