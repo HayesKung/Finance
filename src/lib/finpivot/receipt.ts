@@ -9,6 +9,7 @@ export type ReceiptInput = {
   role: "owner" | "support";
   claimIsCash: boolean;
   key: string;
+  bankRef: string;
   receivableId: string;
   amountYuan: number;
   expectedYuan: number;
@@ -22,7 +23,9 @@ type Decision =
 export function receiptDecision(input: ReceiptInput): Decision {
   if (input.claimIsCash) return { ok: false, reason: "客户申报不是到账。" };
   if (input.role !== "owner") return { ok: false, reason: "只有负责人能确认到账。" };
-  if (!input.key.trim() || !input.receivableId.trim()) return { ok: false, reason: "缺少核销键。" };
+  if (!input.key.trim() || !input.receivableId.trim() || input.bankRef.trim().length < 4) {
+    return { ok: false, reason: "缺少核销键。" };
+  }
   if (!Number.isInteger(input.amountYuan) || !Number.isInteger(input.expectedYuan)) {
     return { ok: false, reason: "金额不符。" };
   }
@@ -61,11 +64,13 @@ async function writeReceipt(
   );
   const used = Number(usedRows[0]?.used ?? 0);
   if (used + decision.cents > decision.expectedCents) return { ok: false as const, reason: "超过这一笔应收。" };
+  const reused = await query<{ id: string }>("select id from fin_bank_receipt where bank_ref = $1", [input.bankRef]);
+  if (reused.length > 0) return { ok: false as const, reason: "银行回单号已用过。" };
   const id = randomUUID();
   await query(
-    `insert into fin_bank_receipt (id, idempotency_key, receivable_id, amount_cents, expected_cents, actor)
-     values ($1, $2, $3, $4, $5, $6)`,
-    [id, input.key, input.receivableId, decision.cents, decision.expectedCents, input.actor],
+    `insert into fin_bank_receipt (id, idempotency_key, bank_ref, receivable_id, amount_cents, expected_cents, actor)
+     values ($1, $2, $3, $4, $5, $6, $7)`,
+    [id, input.key, input.bankRef, input.receivableId, decision.cents, decision.expectedCents, input.actor],
   );
   await query(
     `insert into fin_journal (id, idempotency_key, period, memo, body)

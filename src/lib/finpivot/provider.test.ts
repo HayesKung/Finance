@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import type { Sql } from "../db.ts";
 import {
   archiveEvidence,
   createSandboxEnvelope,
   moveSandbox,
   signWebhook,
+  storeWebhookNonce,
   verifyWebhook,
 } from "./provider.ts";
 
@@ -48,5 +50,29 @@ describe("e-sign provider adapter", () => {
     const archived = archiveEvidence(Buffer.from("synthetic-pdf"));
     assert.equal(archived.legallyBinding, false);
     assert.equal(archived.sha256.length, 64);
+  });
+
+  it("stores a webhook nonce once", async () => {
+    const seen = new Set<string>();
+    const query = async (text: string, params: readonly unknown[] = []) => {
+      if (!text.startsWith("insert into fin_provider_nonce")) throw new Error(text);
+      const nonce = String(params[0]);
+      if (seen.has(nonce)) {
+        const error = new Error("duplicate");
+        Object.assign(error, { code: "23505" });
+        throw error;
+      }
+      seen.add(nonce);
+      return [];
+    };
+    const sql = {
+      async transaction<T>(run: (query: Sql["query"]) => Promise<T>) {
+        return run(query as Sql["query"]);
+      },
+    };
+    const first = await storeWebhookNonce(sql, "nonce-1");
+    const second = await storeWebhookNonce(sql, "nonce-1");
+    assert.equal(first.ok && first.legallyBinding, false);
+    assert.match(second.reason, /已用过/);
   });
 });

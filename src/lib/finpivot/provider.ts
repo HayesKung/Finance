@@ -1,4 +1,5 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
+import type { Sql } from "../db.ts";
 
 export const PROVIDER_PENDING = "PROVIDER_PENDING" as const;
 export const REPLAY_WINDOW_MS = 5 * 60 * 1000;
@@ -77,5 +78,29 @@ export function archiveEvidence(bytes: Buffer) {
     provider: PROVIDER_PENDING,
     legallyBinding: false,
     sha256: createHash("sha256").update(bytes).digest("hex"),
+  };
+}
+
+function nonceErrorCode(error: unknown) {
+  if (typeof error === "object" && error && "code" in error) return String((error as { code?: unknown }).code);
+  return "";
+}
+
+export async function storeWebhookNonce(sql: Pick<Sql, "transaction">, nonce: string) {
+  if (!nonce.trim()) return providerPending("签名材料不完整。");
+  try {
+    await sql.transaction(async (query) => {
+      await query("insert into fin_provider_nonce (nonce) values ($1)", [nonce]);
+    });
+  } catch (error) {
+    if (nonceErrorCode(error) === "23505") return providerPending("随机数已用过。");
+    console.error("storeWebhookNonce failed", nonceErrorCode(error) || "unknown");
+    return providerPending("事件没有记下。");
+  }
+  return {
+    ok: true as const,
+    provider: PROVIDER_PENDING,
+    legallyBinding: false,
+    reason: "sandbox 事件已留下，不构成正式签署。",
   };
 }

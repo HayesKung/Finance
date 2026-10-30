@@ -1,6 +1,7 @@
 create table if not exists fin_bank_receipt (
   id text primary key,
   idempotency_key text not null unique,
+  bank_ref text not null unique,
   receivable_id text not null,
   amount_cents integer not null check (amount_cents > 0),
   expected_cents integer not null check (expected_cents >= amount_cents),

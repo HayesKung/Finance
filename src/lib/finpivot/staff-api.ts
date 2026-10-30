@@ -118,3 +118,26 @@ export const saveDesk = createServerFn({ method: "POST" })
     });
     return saved;
   });
+
+export const confirmReceipt = createServerFn({ method: "POST" })
+  .validator((data: unknown) => {
+    const row = asRecord(data);
+    return {
+      key: String(row.key ?? ""),
+      bankRef: String(row.bankRef ?? ""),
+      receivableId: String(row.receivableId ?? ""),
+      amountYuan: Number(row.amountYuan),
+      expectedYuan: Number(row.expectedYuan),
+    };
+  })
+  .handler(async ({ data }) => {
+    const session = await import("@/lib/finpivot/session.server");
+    const { getSql } = await import("@/lib/db");
+    const { confirmOwnerReceipt } = await import("@/lib/finpivot/receipt");
+    session.assertSameOrigin();
+    const role = session.requireStaff("confirmReceipt");
+    const sql = await getSql();
+    const posted = await confirmOwnerReceipt(sql, { ...data, role, claimIsCash: false, actor: role });
+    if (!posted.ok) throw new Error(posted.reason);
+    return posted;
+  });

@@ -42,6 +42,7 @@ describe("isolated postgres receipt", { skip: url ? false : "FINPIVOT_PG_URL is 
         role: "owner" as const,
         claimIsCash: false,
         key: "synthetic-bank-1",
+        bankRef: "SYN-800",
         receivableId: "synthetic-recv-1",
         amountYuan: 800,
         expectedYuan: 800,
@@ -61,6 +62,14 @@ describe("isolated postgres receipt", { skip: url ? false : "FINPIVOT_PG_URL is 
       const credit = lines.find((line) => line.side === "credit")?.amountCents;
       assert.equal(debit, 80000);
       assert.equal(credit, 80000);
+      await client.query("insert into fin_provider_nonce (nonce) values ($1)", ["synthetic-nonce-1"]);
+      let duplicate = false;
+      try {
+        await client.query("insert into fin_provider_nonce (nonce) values ($1)", ["synthetic-nonce-1"]);
+      } catch (error) {
+        duplicate = typeof error === "object" && error !== null && "code" in error && error.code === "23505";
+      }
+      assert.equal(duplicate, true);
     } finally {
       await client.end();
     }

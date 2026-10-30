@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 import type { Sql } from "../db.ts";
 import { confirmOwnerReceipt, type ReceiptInput } from "./receipt.ts";
 
-type ReceiptRow = { key: string; receivableId: string; amount: number };
+type ReceiptRow = { key: string; bankRef: string; receivableId: string; amount: number };
 type JournalRow = { key: string; body: string };
 
 function memorySql() {
@@ -12,7 +12,12 @@ function memorySql() {
   const audits: string[] = [];
   const query = (async (text: string, params: readonly unknown[] = []) => {
     if (text.startsWith("insert into fin_bank_receipt")) {
-      receipts.push({ key: String(params[1]), receivableId: String(params[2]), amount: Number(params[3]) });
+      receipts.push({
+        key: String(params[1]),
+        bankRef: String(params[2]),
+        receivableId: String(params[3]),
+        amount: Number(params[4]),
+      });
       return [];
     }
     if (text.startsWith("insert into fin_journal")) {
@@ -24,6 +29,10 @@ function memorySql() {
       return [];
     }
     if (text.startsWith("select pg_advisory")) return [];
+    if (text.includes("where bank_ref")) {
+      const found = receipts.find((row) => row.bankRef === params[0]);
+      return found ? [{ id: found.key }] : [];
+    }
     if (text.includes("where idempotency_key")) {
       const found = receipts.find((row) => row.key === params[0]);
       return found ? [{ id: found.key }] : [];
@@ -57,6 +66,7 @@ function input(patch: Partial<ReceiptInput> = {}): ReceiptInput {
     role: "owner",
     claimIsCash: false,
     key: "bank-1",
+    bankRef: "REF-1001",
     receivableId: "recv-1",
     amountYuan: 500,
     expectedYuan: 500,
@@ -85,11 +95,20 @@ describe("bank receipt ledger", () => {
     const sql = memorySql();
     assert.match((await confirmOwnerReceipt(sql, input({ role: "support" }))).reason ?? "", /负责人/);
     assert.match((await confirmOwnerReceipt(sql, input({ claimIsCash: true }))).reason ?? "", /申报/);
-    const partial = await confirmOwnerReceipt(sql, input({ key: "bank-2", amountYuan: 400, expectedYuan: 500 }));
-    const extra = await confirmOwnerReceipt(sql, input({ key: "bank-3", amountYuan: 200, expectedYuan: 500 }));
+    const partial = await confirmOwnerReceipt(sql, input({ key: "bank-2", bankRef: "REF-2002", amountYuan: 400, expectedYuan: 500 }));
+    const extra = await confirmOwnerReceipt(sql, input({ key: "bank-3", bankRef: "REF-2003", amountYuan: 200, expectedYuan: 500 }));
     assert.equal(partial.ok, true);
     assert.match(extra.reason ?? "", /应收/);
     assert.equal(sql.receipts.length, 1);
     assert.equal(sql.journals.length, 1);
+  });
+
+  it("refuses a reused bank reference", async () => {
+    const sql = memorySql();
+    const first = await confirmOwnerReceipt(sql, input({ key: "bank-4", bankRef: "REF-9", amountYuan: 100, expectedYuan: 500 }));
+    const again = await confirmOwnerReceipt(sql, input({ key: "bank-5", bankRef: "REF-9", amountYuan: 100, expectedYuan: 500 }));
+    assert.equal(first.ok, true);
+    assert.match(again.reason ?? "", /回单号/);
+    assert.equal(sql.receipts.length, 1);
   });
 });
