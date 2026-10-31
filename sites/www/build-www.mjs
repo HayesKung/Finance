@@ -1,8 +1,8 @@
-import { cpSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
-import { assetAlt, pages, renderPage } from "./markup.mjs";
+import { HOST, assetAlt, pages, renderPage } from "./markup.mjs";
 
 const root = dirname(fileURLToPath(import.meta.url));
 const out = join(root, "..", "..", "dist", "www");
@@ -20,27 +20,31 @@ function sha256(file) {
   return createHash("sha256").update(readFileSync(file)).digest("hex");
 }
 
-mkdirSync(out, { recursive: true });
+rmSync(out, { recursive: true, force: true });
+mkdirSync(join(out, "en"), { recursive: true });
 cpSync(join(root, "assets"), join(out, "assets"), { recursive: true });
 cpSync(join(root, "assets", "favicon.svg"), join(out, "favicon.svg"));
 writeFileSync(join(out, "styles.css"), readFileSync(join(root, "site.css")));
 writeFileSync(join(out, "site.js"), readFileSync(join(root, "site.js")));
-for (const page of pages) writeFileSync(join(out, page.file), renderPage(page));
+for (const page of pages) {
+  writeFileSync(join(out, page.file), renderPage(page, "zh"));
+  writeFileSync(join(out, "en", page.file), renderPage(page, "en"));
+}
 
 const urls = pages
   .filter((page) => page.file !== "404.html")
-  .map((page) => {
-    const loc = page.file === "index.html" ? "https://finanpivot.com/" : `https://finanpivot.com/${page.file}`;
-    return `  <url><loc>${loc}</loc></url>`;
+  .flatMap((page) => {
+    const path = page.file === "index.html" ? "/" : `/${page.file}`;
+    return [`  <url><loc>${HOST}${path}</loc></url>`, `  <url><loc>${HOST}/en${path}</loc></url>`];
   });
 writeFileSync(
   join(out, "sitemap.xml"),
   `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join("\n")}\n</urlset>\n`,
 );
-writeFileSync(join(out, "robots.txt"), "User-agent: *\nAllow: /\nSitemap: https://finanpivot.com/sitemap.xml\n");
+writeFileSync(join(out, "robots.txt"), `User-agent: *\nAllow: /\nSitemap: ${HOST}/sitemap.xml\n`);
 
 const manifest = {
-  generatedFor: "finanpivot.com",
+  generatedFor: "www.finanpivot.com",
   assets: walk(join(out, "assets"))
     .concat([join(out, "favicon.svg")])
     .map((file) => {
@@ -48,7 +52,7 @@ const manifest = {
       return {
         path: relative(out, file).replaceAll("\\", "/"),
         source: "original",
-        license: "Original illustration created for finanpivot.com. No third-party photograph or customer image.",
+        license: "Original graphic created for finanpivot.com. No third-party photograph or customer image.",
         sha256: sha256(file),
         alt: assetAlt[name] ?? "",
       };
@@ -56,12 +60,12 @@ const manifest = {
 };
 writeFileSync(join(out, "assets-manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
 
-const forbidden = ["DATABASE_URL", "FINANCE_SESSION_SECRET", "FINANCE_DATA_KEY", "BEGIN PRIVATE KEY", "fin_staff"];
+const forbidden = ["DATABASE_URL", "FINANCE_SESSION_SECRET", "FINANCE_DATA_KEY", "BEGIN PRIVATE KEY", "fin_staff", "复式分录", "合同负债"];
 for (const file of walk(out)) {
   if (!file.endsWith(".html") && !file.endsWith(".js") && !file.endsWith(".css") && !file.endsWith(".svg")) continue;
   const text = readFileSync(file, "utf8");
   for (const word of forbidden) {
-    if (text.includes(word)) throw new Error(`forbidden token in ${file}`);
+    if (text.includes(word)) throw new Error(`forbidden token ${word} in ${file}`);
   }
 }
 const hash = createHash("sha256");

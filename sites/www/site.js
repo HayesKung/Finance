@@ -16,33 +16,19 @@ document.querySelectorAll("[data-copy]").forEach((button) => {
   });
 });
 
-const langButton = document.querySelector("#lang");
-if (langButton) {
-  const apply = (lang) => {
-    document.documentElement.lang = lang === "en" ? "en" : "zh-CN";
-    document.querySelectorAll("[data-en]").forEach((node) => {
-      if (!node.dataset.zh) node.dataset.zh = node.textContent;
-      node.textContent = lang === "en" ? node.dataset.en : node.dataset.zh;
-    });
-    langButton.textContent = lang === "en" ? "中文" : "EN";
-    paintBrief();
-  };
-  langButton.addEventListener("click", () => apply(document.documentElement.lang === "en" ? "zh" : "en"));
-}
-
 const brief = document.querySelector("#brief");
 function paintBrief() {
   if (!brief) return;
-  const who = document.querySelector("#who")?.value.trim() || "（企业称呼）";
-  const where = document.querySelector("#where")?.value.trim() || "（业务地区）";
+  const who = document.querySelector("#who")?.value.trim() || (document.documentElement.lang === "en" ? "(company)" : "（企业称呼）");
+  const where = document.querySelector("#where")?.value.trim() || (document.documentElement.lang === "en" ? "(region)" : "（业务地区）");
   const pressed = document.querySelector('.choices button[aria-pressed="true"]');
-  const matter = pressed?.textContent.trim() || "先看服务范围";
+  const matter = pressed?.textContent.trim() || (document.documentElement.lang === "en" ? "Export papers and receipts" : "出口单据和收汇");
   const extra = document.querySelector("#extra")?.value.trim() || "";
   const en = document.documentElement.lang === "en";
   const subject = en ? "FinanPivot inquiry" : "FinanPivot 咨询";
   const body = en
-    ? `Company: ${who}\nRegion: ${where}\nTopic: ${matter}\nNote: ${extra}\n\nThis is a first conversation, not a contract or an order.`
-    : `企业：${who}\n业务地区：${where}\n想先看的事项：${matter}\n补充：${extra}\n\n这是初步沟通，不是合同，也不是订单。`;
+    ? `Company: ${who}\nRegion: ${where}\nTopic: ${matter}\nNote: ${extra}\n\nThis is a first conversation, not a contract or an order. Please do not attach bank passwords, full identity documents, or client money accounts.`
+    : `企业：${who}\n业务地区：${where}\n想先看的事项：${matter}\n补充：${extra}\n\n这是初步沟通，不是合同，也不是订单。请不要附银行口令、完整证件或客户资金账户。`;
   const preview = document.querySelector("#preview");
   if (preview) preview.textContent = `${subject}\n\n${body}`;
   const send = document.querySelector("#send");
@@ -53,8 +39,6 @@ if (brief) {
     button.addEventListener("click", () => {
       document.querySelectorAll(".choices button").forEach((item) => item.setAttribute("aria-pressed", "false"));
       button.setAttribute("aria-pressed", "true");
-      const matter = document.querySelector("#matter");
-      if (matter) matter.textContent = button.textContent.trim();
       paintBrief();
     });
   });
