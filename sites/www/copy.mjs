@@ -5,7 +5,7 @@ export const UPDATED = "2026-11-02";
 
 export const assetAlt = {
   "favicon.svg": "FinanPivot 标志",
-  "hero.svg": "示意：订单、单据与收付款汇入同一本台账",
+  "hero.svg": "示意：授权、可追溯的记录和分开的资金。不是客户档案。",
   "flow.svg": "服务流程：准入、报价、核验、交付",
   "ledger.svg": "账务关系：客户申报经负责人确认后记入银行存款和合同负债",
   "export.svg": "出口单据与收汇记录对照",
@@ -18,7 +18,7 @@ export const assetAlt = {
 
 export const assetAltEn = {
   "favicon.svg": "FinanPivot mark",
-  "hero.svg": "Illustration: orders, documents and receipts brought into one ledger",
+  "hero.svg": "Illustration of authority, a traceable record and separate funds. Not a client file.",
   "flow.svg": "Service path: admission, fee, check, delivery",
   "ledger.svg": "Books: a customer claim is recorded as cash and contract liability only after the principal confirms it",
   "export.svg": "Export documents set beside the receipt record",
@@ -34,7 +34,7 @@ export const nav = [
   ["services.html", "服务", "Services"],
   ["how-we-work.html", "流程", "Path"],
   ["insights.html", "见解", "Insights"],
-  ["start.html", "咨询", "Start"],
+  ["start.html", "咨询", "Inquiry"],
   ["about.html", "原则", "Rules"],
   ["faq.html", "问答", "FAQ"],
   ["contact.html", "联系", "Contact"],
