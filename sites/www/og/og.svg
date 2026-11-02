@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <rect width="1200" height="630" fill="#12352c"/>
+  <circle cx="1040" cy="90" r="210" fill="none" stroke="#e6d3b0" stroke-opacity="0.28" stroke-width="26"/>
+  <rect x="72" y="78" width="48" height="4" rx="2" fill="#e6d3b0"/>
+  <text x="72" y="128" fill="#e6d3b0" font-family="Inter, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', 'Microsoft YaHei', 'WenQuanYi Micro Hei', sans-serif" font-size="18" letter-spacing="3.5">FINANPIVOT</text>
+  <text x="72" y="220" fill="#f7f4ee" font-family="Georgia, 'Iowan Old Style', 'Palatino Linotype', Palatino, 'Liberation Serif', 'Songti SC', 'Noto Serif CJK SC', serif" font-size="54">让跨境财务更清晰</text>
+  <text x="72" y="294" fill="#f7f4ee" font-family="Georgia, 'Iowan Old Style', 'Palatino Linotype', Palatino, 'Liberation Serif', 'Songti SC', 'Noto Serif CJK SC', serif" font-size="54">让经营决策更有依据</text>
+  <text x="72" y="360" fill="#c5ddd4" font-family="Inter, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', 'Microsoft YaHei', 'WenQuanYi Micro Hei', sans-serif" font-size="22">Financial Clarity. Business Forward.</text>
+  <g font-family="Inter, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', 'Microsoft YaHei', 'WenQuanYi Micro Hei', sans-serif" font-size="18" fill="#12352c">
+    <rect x="72" y="418" width="168" height="44" rx="22" fill="#e7f1ec"/>
+    <text x="96" y="446">网站不收款</text>
+    <rect x="256" y="418" width="168" height="44" rx="22" fill="#e7f1ec"/>
+    <text x="280" y="446">不展示名单</text>
+    <rect x="440" y="418" width="168" height="44" rx="22" fill="#f3e6df"/>
+    <text x="464" y="446" fill="#7c3828">咨询不留存</text>
+  </g>
+  <rect x="760" y="78" width="376" height="474" rx="28" fill="#fffcf8"/>
+  <text x="792" y="132" fill="#14211c" font-family="Georgia, 'Iowan Old Style', 'Palatino Linotype', Palatino, 'Liberation Serif', 'Songti SC', 'Noto Serif CJK SC', serif" font-size="32">对照表</text>
+  <rect x="980" y="100" width="116" height="36" rx="18" fill="#f3e6df"/>
+  <text x="1008" y="124" fill="#7c3828" font-family="Inter, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', 'Microsoft YaHei', 'WenQuanYi Micro Hei', sans-serif" font-size="16">示意</text>
+  <g font-family="Inter, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', 'Microsoft YaHei', 'WenQuanYi Micro Hei', sans-serif" font-size="18" fill="#3a4742">
+    <text x="792" y="196">订单</text>
+    <text x="792" y="254">发票</text>
+    <text x="792" y="312">单据</text>
+    <text x="792" y="370">收汇</text>
+    <text x="792" y="436">差异</text>
+  </g>
+  <g fill="#e6e0d4">
+    <rect x="900" y="180" width="180" height="12" rx="6"/>
+    <rect x="900" y="238" width="140" height="12" rx="6"/>
+    <rect x="900" y="296" width="170" height="12" rx="6"/>
+    <rect x="900" y="354" width="110" height="12" rx="6"/>
+  </g>
+  <rect x="900" y="412" width="108" height="32" rx="16" fill="#f3e6df"/>
+  <text x="918" y="434" fill="#7c3828" font-family="Inter, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', 'Microsoft YaHei', 'WenQuanYi Micro Hei', sans-serif" font-size="16">未核对</text>
+</svg>

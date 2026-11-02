@@ -11,7 +11,9 @@ export const assetAlt = {
   "export.svg": "出口单据与收汇记录对照",
   "project.svg": "项目进度与资金计划",
   "collect.svg": "合同、发票与到账三方核对",
-  "report.svg": "月度管理报告趋势",
+  "report.svg": "月度管理说明的栏目：账务资料、经营分析，资质事项另列",
+  "og.png": "FinanPivot：让跨境财务更清晰，让经营决策更有依据",
+  "og.en.png": "FinanPivot: clearer cross-border finance, for clearer decisions",
 };
 
 export const assetAltEn = {
@@ -22,7 +24,9 @@ export const assetAltEn = {
   "export.svg": "Export documents set beside the receipt record",
   "project.svg": "Project progress and a cash plan",
   "collect.svg": "Contract, invoice and bank credit checked against each other",
-  "report.svg": "A monthly management-note trend",
+  "report.svg": "The sections of a management note: books, analysis, and licensed work set aside",
+  "og.png": "FinanPivot: clearer cross-border finance, for clearer decisions",
+  "og.en.png": "FinanPivot: clearer cross-border finance, for clearer decisions",
 };
 
 export const nav = [

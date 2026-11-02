@@ -3,6 +3,8 @@ import { cpSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync }
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { analytics } from "./analytics-config.mjs";
+import { assetAltEn } from "./copy.mjs";
+import { illustrations } from "./illustrations.mjs";
 import { assetAlt, llmsFullTxt, llmsTxt, pages } from "./markup.mjs";
 
 const root = dirname(fileURLToPath(import.meta.url));
@@ -52,6 +54,13 @@ for (const page of pages) {
 
 mkdirSync(out, { recursive: true });
 cpSync(join(root, "assets"), join(out, "assets"), { recursive: true });
+for (const locale of ["zh", "en"]) {
+  const dir = locale === "en" ? join(out, "assets", "en") : join(out, "assets");
+  mkdirSync(dir, { recursive: true });
+  for (const [name, svg] of Object.entries(illustrations(locale))) {
+    writeFileSync(join(dir, name), svg);
+  }
+}
 cpSync(join(root, "assets", "favicon.svg"), join(out, "favicon.svg"));
 writeFileSync(join(out, "styles.css"), readFileSync(join(root, "site.css")));
 writeFileSync(join(out, "site.js"), readFileSync(join(root, "site.js")));
@@ -89,12 +98,14 @@ const manifest = {
     .concat([join(out, "favicon.svg")])
     .map((file) => {
       const name = file.split(/[/\\]/).pop();
+      const english = file.includes(`${join("assets", "en")}`) || name.startsWith("og.en");
+      const alt = (english ? assetAltEn[name] : assetAlt[name]) || assetAlt[name] || "";
       return {
         path: relative(out, file).replaceAll("\\", "/"),
         source: "original",
         license: "Original illustration created for finanpivot.com. No third-party photograph or customer image.",
         sha256: sha256(file),
-        alt: assetAlt[name] ?? "",
+        alt,
       };
     }),
 };
