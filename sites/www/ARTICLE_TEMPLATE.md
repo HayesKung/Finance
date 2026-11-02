@@ -42,6 +42,6 @@
 }
 ```
 
-`image` 只能用 `sites/www/assets/` 里已有的示意图：`export.svg`、`project.svg`、`collect.svg`、`report.svg`。不要换上客户照片或图库图片。
+`image` 用这些示意图文件名：`export.svg`、`project.svg`、`collect.svg`、`report.svg`。构建时会按中英文各画一版（见 `illustrations.mjs`）。不要换上客户照片或图库图片。
 
 `date` 用你审阅通过的日期。站点地图会用这个日期。

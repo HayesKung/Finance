@@ -73,6 +73,20 @@ if (brief) {
   paintBrief();
 }
 
+const menu = document.querySelector("#nav-menu");
+const menuToggle = document.querySelector(".menu-toggle");
+if (menu && menuToggle) {
+  const syncMenu = () => menuToggle.setAttribute("aria-expanded", menu.checked ? "true" : "false");
+  menu.addEventListener("change", syncMenu);
+  syncMenu();
+  document.querySelectorAll("#nav-panel a").forEach((link) => {
+    link.addEventListener("click", () => {
+      menu.checked = false;
+      syncMenu();
+    });
+  });
+}
+
 document.addEventListener("click", (event) => {
   const node = event.target instanceof Element ? event.target.closest("[data-track]") : null;
   if (!node || typeof window.finanpivot?.track !== "function") return;

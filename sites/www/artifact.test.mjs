@@ -45,6 +45,13 @@ describe("public website artifact", () => {
     const note = readFileSync("dist/www/insights/screenshot-is-not-a-receipt.html", "utf8");
     const sitemap = readFileSync("dist/www/sitemap.xml", "utf8");
     const llms = readFileSync("dist/www/llms.txt", "utf8");
+    assert.match(page, /property="og:image" content="https:\/\/finanpivot.com\/assets\/og\.png"/);
+    assert.match(en, /property="og:image" content="https:\/\/finanpivot.com\/assets\/og\.en\.png"/);
+    assert.equal(page.includes("assets/hero.svg"), false);
+    assert.equal(existsSync("dist/www/assets/og.png"), true);
+    assert.equal(existsSync("dist/www/assets/og.en.png"), true);
+    assert.equal(existsSync("dist/www/assets/export.svg"), true);
+    assert.equal(existsSync("dist/www/assets/en/hero.svg"), true);
     assert.match(page, /rel="canonical" href="https:\/\/finanpivot.com\/"/);
     assert.match(page, /hreflang="en" href="https:\/\/finanpivot.com\/en\/"/);
     assert.match(page, /hreflang="zh-CN"/);
