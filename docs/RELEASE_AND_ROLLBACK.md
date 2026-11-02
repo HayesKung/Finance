@@ -2,6 +2,8 @@
 
 发布单位是 Git 提交。生产是否等于仓库 `main`，在部署后用 SHA 核对。本文件写就时，生产 SHA 未经本轮复测。
 
+Oracle 官网和腾讯云 Finance 的分别发布、校验和回滚在 `docs/DEPLOY_ORACLE_AND_TENCENT.md`。不要把两边合成一次替换。
+
 向前：
 
 1. 备份数据库。
