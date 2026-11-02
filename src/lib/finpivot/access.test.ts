@@ -34,6 +34,13 @@ describe("staff session", () => {
     assert.equal(can("support", "publish"), true);
     assert.equal(can("support", "saveChannel"), false);
     assert.equal(can("owner", "revoke"), true);
+    assert.equal(can("support", "confirmReceipt"), false);
+    assert.equal(can("support", "changePrice"), false);
+    assert.equal(can("support", "reverseEntry"), false);
+    assert.equal(can("support", "refund"), false);
+    assert.equal(can("support", "issueDelivery"), false);
+    assert.equal(can("owner", "confirmReceipt"), true);
+    assert.equal(can("owner", "issueDelivery"), true);
   });
 
   it("blocks a burst and then opens a new window", () => {
