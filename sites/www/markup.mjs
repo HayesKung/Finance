@@ -65,7 +65,13 @@ const ICONS = {
   close: '<path d="M6 6l12 12M18 6 6 18"/>',
   message: '<path d="M21 12a8 8 0 0 1-8 8H7l-4 3V12a8 8 0 0 1 8-8h2a8 8 0 0 1 8 8Z"/>',
   user: '<path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="8" r="4"/>',
+  bank: '<path d="M4 10 12 4l8 6"/><path d="M6 10v7M10 10v7M14 10v7M18 10v7"/><path d="M4 17h16M3 20h18"/>',
+  search: '<circle cx="11" cy="11" r="6"/><path d="m20 20-3.5-3.5"/>',
+  stamp: '<circle cx="12" cy="12" r="8"/><path d="m8.5 12.2 2.3 2.3 4.7-5"/>',
 };
+
+const FLOW_ICON = ["shield", "mail", "user", "scale", "file", "bank", "search", "book", "layers", "stamp"];
+const HOME_ICON = ["shield", "mail", "scale", "file", "bank", "search", "layers", "stamp"];
 
 const SERVICE_ICON = { export: "file", project: "layers", collect: "scale", report: "book" };
 const PRINCIPLE_ICON = ["shield", "lock", "file", "ban", "scale", "user"];
@@ -140,8 +146,10 @@ function contactActions(locale) {
 function cta(locale, href) {
   const text = ui[locale];
   return `<aside class="cta">
-    <h2>${esc(text.ctaTitle)}</h2>
-    <p>${esc(text.ctaBody)}</p>
+    <div class="cta-copy">
+      <h2>${esc(text.ctaTitle)}</h2>
+      <p>${esc(text.ctaBody)}</p>
+    </div>
     <div class="btnrow">
       <a class="btn solid" href="${href}" data-track="cta_inquiry">${esc(text.ctaInquiry)}${icon("arrow")}</a>
       <a class="btn" href="mailto:${MAIL}" data-track="cta_email">${icon("mail")}${esc(text.ctaEmail)}</a>
@@ -262,7 +270,7 @@ function shell(page) {
     ["services.html", L(locale, "服务", "Services")],
     ["how-we-work.html", L(locale, "流程", "Path")],
     ["insights.html", L(locale, "见解", "Insights")],
-    ["start.html", L(locale, "咨询", "Start")],
+    ["start.html", L(locale, "咨询", "Inquiry")],
     ["faq.html", L(locale, "问答", "FAQ")],
     ["about.html", L(locale, "原则", "Rules")],
     ["contact.html", L(locale, "联系", "Contact")],
@@ -301,6 +309,8 @@ function shell(page) {
 <meta name="twitter:image:alt" content="${esc(locale === "en" ? assetAltEn["og.en.png"] : assetAlt["og.png"])}">
 <meta name="theme-color" content="#12352c">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preload" href="/assets/fonts/noto-sans-sc-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/assets/fonts/noto-sans-sc-600.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/styles.css">
 <link rel="sitemap" type="application/xml" href="/sitemap.xml">
 <link rel="describedby" href="/llms.txt" type="text/plain" title="LLM site summary">
@@ -315,26 +325,26 @@ ${analyticsStub()}
     <a class="brand" href="${locPath("index.html", locale)}"><span class="mark">${MARK}</span><span class="brand-text"><span class="brand-name">FinanPivot</span><span class="brand-tag">${esc(text.tagline)}</span></span></a>
     <nav aria-label="${esc(text.navLabel)}">
       <input class="menu-check" id="nav-menu" type="checkbox">
-      <label class="menu-toggle" for="nav-menu" aria-controls="nav-panel" aria-expanded="false">${icon("menu", "icon icon-open")}${icon("close", "icon icon-close")}<span>${esc(text.menu)}</span></label>
+      <label class="menu-toggle" for="nav-menu" role="button" aria-controls="nav-panel" aria-expanded="false">${icon("menu", "icon icon-open")}${icon("close", "icon icon-close")}<span>${esc(text.menu)}</span></label>
       <div class="menu-links" id="nav-panel"><div class="menu-inner">${links}</div></div>
     </nav>
-    <a class="lang" href="${locPath(page.file, other)}" hreflang="${other === "en" ? "en" : "zh-CN"}" lang="${other === "en" ? "en" : "zh-CN"}" aria-label="${esc(text.langLabel)}">${esc(text.lang)}</a>
+    <a class="lang" href="${locPath(page.file, other)}" hreflang="${other === "en" ? "en" : "zh-CN"}" lang="${other === "en" ? "en" : "zh-CN"}">${esc(text.lang)}<span class="visually-hidden"> ${esc(text.langLabel)}</span></a>
   </div>
 </header>
 <main id="content">${page.crumbHtml || ""}${page.body}</main>
 <footer class="site-footer">
   <div class="footer-inner">
     <div class="footer-grid">
-      <div>
+      <div class="footer-brand">
         <p class="footer-name">FinanPivot</p>
         <p class="footer-slogan">Financial Clarity. Business Forward.</p>
         <p class="footer-tag">${esc(text.tagline)}</p>
       </div>
       <nav aria-label="${esc(L(locale, "页脚", "Footer"))}">
         <p class="kicker">${esc(L(locale, "浏览", "Explore"))}</p>
-        ${footLinks}
+        <div class="footer-links">${footLinks}</div>
       </nav>
-      <div>
+      <div class="footer-contact">
         <p class="kicker">${esc(text.contact)}</p>
         <p><a href="mailto:${MAIL}">${MAIL}</a></p>
         <p><a href="${locPath("contact.html", locale)}">${esc(L(locale, "联系页", "Contact page"))}</a></p>
@@ -390,27 +400,29 @@ function sheetMock(locale) {
   const zh = locale !== "en";
   const cols = zh ? ["订单", "发票", "单据", "收汇"] : ["Order", "Invoice", "Papers", "Bank"];
   const status = zh ? "未核对" : "Unchecked";
-  const heads = cols.map((label) => `<th scope="col">${esc(label)}</th>`).join("") + `<th scope="col">${esc(zh ? "状态" : "Status")}</th>`;
-  const rows = [0, 1, 2, 3]
-    .map((index) => `<tr>${cols.map((_, cell) => `<td><span class="rule w${(index + cell) % 3}"></span></td>`).join("")}<td><span class="status">${esc(status)}</span></td></tr>`)
-    .join("");
+  const lines = cols.map((label) => `<li><span class="sheet-mark" aria-hidden="true">${icon("file")}</span><span>${esc(label)}</span><span class="status">${esc(status)}</span></li>`).join("");
   const items = zh ? ["订单", "单据", "收汇", "差异"] : ["Order", "Papers", "Bank", "Open"];
-  return `<div class="mock" aria-hidden="true">
+  return `<div class="mock">
       <div class="mock-spine"><span class="mock-kicker">${esc(zh ? "台账" : "Ledger")}</span><p class="mock-title">${esc(zh ? "同一本台账" : "One file")}</p><ul>${items.map((item) => `<li>${esc(item)}</li>`).join("")}</ul></div>
       <div class="mock-sheet">
         <div class="mock-bar"><strong>${esc(zh ? "对照表" : "Sheet")}</strong><span class="status">${esc(zh ? "示意 · 无金额" : "Sample · no amounts")}</span></div>
-        <table><thead><tr>${heads}</tr></thead><tbody>${rows}</tbody></table>
+        <ul class="sheet">${lines}</ul>
         <p class="mock-chip">${esc(zh ? "截图不是到账" : "A screenshot is not a receipt")}</p>
       </div>
     </div>`;
 }
 
 function laneMock(locale) {
-  const rows = locale === "en"
-    ? [["Budget", false], ["Progress", false], ["Retention", false], ["Cash", true]]
-    : [["预算", false], ["进度", false], ["质保金", false], ["现金流", true]];
-  return `<div class="lanes" aria-hidden="true">${rows
-    .map(([label, split]) => `<div class="lane"><span>${esc(label)}</span><span class="track${split ? " split" : ""}"><i></i>${split ? "<i></i>" : ""}</span></div>`)
+  const zh = locale !== "en";
+  const rows = zh
+    ? [["预算", false], ["进度", false], ["质保金", false], ["现金流", true]]
+    : [["Budget", false], ["Progress", false], ["Retention", false], ["Cash", true]];
+  const confirmed = zh ? "已确认" : "Confirmed";
+  const claim = zh ? "只是申报" : "Only a claim";
+  return `<div class="lanes">${rows
+    .map(([label, split]) => `<div class="lane"><span>${esc(label)}</span>${split
+      ? `<span class="track split"><i><b>${esc(confirmed)}</b></i><i><b>${esc(claim)}</b></i></span>`
+      : `<span class="track"><i></i></span>`}</div>`)
     .join("")}</div>`;
 }
 
@@ -440,7 +452,7 @@ function homeBody(locale) {
     })
     .join("");
   const steps = homeSteps[locale]
-    .map(([title, where], index) => `<li><span class="num">${String(index + 1).padStart(2, "0")}</span><strong>${esc(title)}</strong><p>${esc(where)}</p></li>`)
+    .map(([title, where], index) => `<li><span class="flow-top"><span class="icon-wrap">${icon(HOME_ICON[index] || "check")}</span><span class="num">${String(index + 1).padStart(2, "0")}</span></span><strong>${esc(title)}</strong><p>${esc(where)}</p></li>`)
     .join("");
   const notes = articles
     .map((article) => {
@@ -544,18 +556,42 @@ function serviceBody(service, locale) {
     ${cta(locale, `${locPath("start.html", locale)}#${service.id}`)}`;
 }
 
-function flowBody(locale) {
+function flowDiagram(locale) {
   const steps = flowSteps[locale]
-    .map(([n, title, where, text]) => `<li><b>${n}</b><div><strong>${esc(title)}</strong><span class="where">${esc(where)}</span><p>${esc(text)}</p></div></li>`)
+    .map(([n, title, where, text], index) => {
+      const last = index === flowSteps[locale].length - 1;
+      return `<li class="flow-step${last ? " is-last" : ""}"><div class="flow-top"><span class="icon-wrap">${icon(FLOW_ICON[index] || "check")}</span><span class="flow-num">${esc(n)}</span></div><h2 class="flow-title">${esc(title)}</h2><p class="where">${esc(where)}</p><p>${esc(text)}</p></li>`;
+    })
     .join("");
+  return `<ol class="flow">${steps}</ol>`;
+}
+
+function ledgerMock(locale) {
+  const rows = locale === "en"
+    ? [
+        ["01", "file", "Claim", "A customer claim is not money received."],
+        ["02", "search", "Confirm", "The principal confirms the bank credit."],
+        ["03", "book", "Books", "Debit cash. Credit the contract liability."],
+      ]
+    : [
+        ["01", "file", "申报", "客户申报不是到账。"],
+        ["02", "search", "确认", "负责人确认银行实际到账。"],
+        ["03", "book", "入账", "借记银行存款，贷记合同负债。"],
+      ];
+  return `<ol class="ledger">${rows
+    .map(([n, name, title, text], index) => `<li class="${index === rows.length - 1 ? "is-last" : ""}"><span class="icon-wrap">${icon(name)}</span><div><p class="ledger-num">${esc(n)}</p><h3>${esc(title)}</h3><p>${esc(text)}</p></div></li>`)
+    .join("")}</ol>`;
+}
+
+function flowBody(locale) {
   const shot = articles.find((item) => item.slug === "screenshot-is-not-a-receipt");
+  const books = L(locale, "客户申报不是到账。只有负责人确认银行实际到账后，才借记银行存款、贷记合同负债。", "A customer claim is not money received. Only after the principal confirms the bank credit do the books debit cash and credit the contract liability.");
   return `<header class="page-intro"><p class="kicker">${esc(L(locale, "流程", "Path"))}</p><h1>${esc(L(locale, "服务流程", "How the work moves"))}</h1><p class="lede">${esc(L(locale, "从看清边界到负责人签发。在线签署未开通，网站不收款，付款截图不算到账。", "From the boundary to the principal's sign-off. Online signing is not open, this site does not take payment, and a screenshot is not a receipt."))}</p></header>
-    ${figure("flow.svg", locale, illustrative(locale), { priority: true })}
-    <ol class="steps">${steps}</ol>
-    <section class="band">
-      <h2>${esc(L(locale, "账务关系", "How money is recorded"))}</h2>
-      ${figure("ledger.svg", locale, L(locale, "客户申报不是到账。只有负责人确认银行实际到账后，才借记银行存款、贷记合同负债。", "A customer claim is not money received. Only after the principal confirms the bank credit do the books debit cash and credit the contract liability."))}
-      <p class="note">${esc(L(locale, "客户申报不是到账。只有负责人确认银行实际到账后，才借记银行存款、贷记合同负债。", "A customer claim is not money received. Only after the principal confirms the bank credit do the books debit cash and credit the contract liability."))}</p>
+    ${flowDiagram(locale)}
+    <section class="band" id="books">
+      <header class="section-head"><h2>${esc(L(locale, "账务关系", "How money is recorded"))}</h2></header>
+      ${ledgerMock(locale)}
+      <p class="note">${esc(books)}</p>
     </section>
     <p><a class="text-link" href="${locPath(`insights/${shot.slug}.html`, locale)}">${esc(shot[locale].title)}${icon("arrow")}</a></p>
     ${cta(locale, locPath("start.html", locale))}`;
@@ -627,7 +663,7 @@ function startBody(locale) {
   const choices = topics
     .map(([id, zh, en], index) => `<button type="button" data-topic="${id}" aria-pressed="${index === 0 ? "true" : "false"}">${esc(L(locale, zh, en))}</button>`)
     .join("");
-  return `<header class="page-intro"><p class="kicker">${esc(L(locale, "咨询", "Start"))}</p><h1>${esc(L(locale, "准备咨询", "Prepare an inquiry"))}</h1>
+  return `<header class="page-intro"><p class="kicker">${esc(L(locale, "咨询", "Inquiry"))}</p><h1>${esc(L(locale, "准备咨询", "Prepare an inquiry"))}</h1>
     <p class="lede">${esc(L(locale, "这一页只帮你写好邮件。它不是合同，不是报价，也不是订单。内容不会留在网站上。", "This page only writes the email. It is not a contract, a quote, or an order. Nothing is stored on the site."))}</p></header>
     <ol class="steps">${steps}</ol>
     <div class="brief" id="brief">
@@ -654,9 +690,8 @@ function aboutBody(locale) {
     .map((item, index) => `<li><span class="icon-wrap">${icon(PRINCIPLE_ICON[index] || "check")}</span><p>${esc(item)}</p></li>`)
     .join("");
   return `<header class="page-hero"><div><p class="kicker">${esc(L(locale, "原则", "Rules"))}</p><h1>${esc(L(locale, "工作原则", "Working rules"))}</h1><p class="lede">${esc(L(locale, "FinanPivot 面向中国企业的全球化经营，提供跨境财务管理与专业财务外包。品牌主张是 Financial Clarity. Business Forward.", "FinanPivot serves Chinese companies operating abroad. The line is Financial Clarity. Business Forward."))}</p></div>${figure("hero.svg", locale, illustrative(locale), { priority: true }).replace('class="wide-figure"', 'class="page-visual"')}</header>
-    <ul class="principles">${cards}</ul>
-    <h2>${esc(L(locale, "网站上不展示", "What this site does not show"))}</h2>
-    <ul class="absent">${missing}</ul>
+    <section class="band tight principles-block"><ul class="principles">${cards}</ul></section>
+    <section class="band absent-block"><h2>${esc(L(locale, "网站上不展示", "What this site does not show"))}</h2><ul class="absent">${missing}</ul></section>
     ${cta(locale, locPath("start.html", locale))}`;
 }
 
@@ -668,7 +703,7 @@ function faqBody(locale) {
       return `<details${index === 0 ? " open" : ""}><summary>${esc(text.q)}</summary><p>${esc(text.a)}</p>${extra}</details>`;
     })
     .join("");
-  return `<header class="page-intro"><p class="kicker">${esc(L(locale, "问答", "FAQ"))}</p><h1>${esc(L(locale, "常见问题", "Questions"))}</h1></header><div class="faq">${blocks}</div><p><a class="text-link" href="${locPath("insights.html", locale)}">${esc(L(locale, "看展开的说明", "Read the longer notes"))}${icon("arrow")}</a></p>`;
+  return `<header class="page-intro"><p class="kicker">${esc(L(locale, "问答", "FAQ"))}</p><h1>${esc(L(locale, "常见问题", "Questions"))}</h1><p class="lede">${esc(L(locale, "下面只回答本站已经公开的说法。网站不收款，不展示客户名单、业绩数字或牌照。", "These answers stay inside what this site already says. This site does not take payment and shows no client list, performance numbers or license."))}</p></header><div class="faq">${blocks}</div><p class="section-more"><a class="text-link" href="${locPath("insights.html", locale)}">${esc(L(locale, "看展开的说明", "Read the longer notes"))}${icon("arrow")}</a></p>${cta(locale, locPath("start.html", locale))}`;
 }
 
 function contactBody(locale) {
@@ -836,7 +871,7 @@ export function buildPages() {
       file: "start.html",
       title: L(locale, "准备咨询 · FinanPivot", "Prepare an inquiry · FinanPivot"),
       description: L(locale, "把企业、地区和想先看的事项写成一封邮件。网站不保存这封咨询，也不在这里收款。", "Write the company, the region and the topic into an email. The site does not store the inquiry and does not take payment here."),
-      crumbs: homeCrumb(locale, [{ label: L(locale, "咨询", "Start"), url: abs("start.html", locale) }]),
+      crumbs: homeCrumb(locale, [{ label: L(locale, "咨询", "Inquiry"), url: abs("start.html", locale) }]),
       body: startBody(locale),
     }));
     pages.push(pair(locale, {

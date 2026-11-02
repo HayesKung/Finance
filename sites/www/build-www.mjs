@@ -98,10 +98,20 @@ const manifest = {
     .concat([join(out, "favicon.svg")])
     .map((file) => {
       const name = file.split(/[/\\]/).pop();
+      const rel = relative(out, file).replaceAll("\\", "/");
+      if (rel.includes("/fonts/") || name.endsWith(".woff2") || name === "OFL.txt") {
+        return {
+          path: rel,
+          source: "noto-sans-sc",
+          license: "SIL Open Font License 1.1. Self-hosted subset of Noto Sans SC covering the characters used on this site. See assets/fonts/OFL.txt.",
+          sha256: sha256(file),
+          alt: "",
+        };
+      }
       const english = file.includes(`${join("assets", "en")}`) || name.startsWith("og.en");
       const alt = (english ? assetAltEn[name] : assetAlt[name]) || assetAlt[name] || "";
       return {
-        path: relative(out, file).replaceAll("\\", "/"),
+        path: rel,
         source: "original",
         license: "Original illustration created for finanpivot.com. No third-party photograph or customer image.",
         sha256: sha256(file),
